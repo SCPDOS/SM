@@ -1,0 +1,55 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD ./bin/sm.obj
+                0x0000000000000000                __image_base__ = 0x0
+                0x0000000000000000                __dll__ = 0x0
+                0x0000000000000000                __ImageBase = 0x0
+                0x0000000000000010                __section_alignment__ = 0x10
+                0x0000000000000010                __file_alignment__ = 0x10
+                0x0000000000000004                __major_os_version__ = 0x4
+                0x0000000000000000                __minor_os_version__ = 0x0
+                0x0000000000000000                __major_image_version__ = 0x0
+                0x0000000000000000                __minor_image_version__ = 0x0
+                0x0000000000000005                __major_subsystem_version__ = 0x5
+                0x0000000000000002                __minor_subsystem_version__ = 0x2
+                0x0000000000000003                __subsystem__ = 0x3
+                0x0000000000200000                __size_of_stack_reserve__ = 0x200000
+                0x0000000000001000                __size_of_stack_commit__ = 0x1000
+                0x0000000000100000                __size_of_heap_reserve__ = 0x100000
+                0x0000000000001000                __size_of_heap_commit__ = 0x1000
+                0x0000000000000000                __loader_flags__ = 0x0
+                0x0000000000000160                __dll_characteristics__ = 0x160
+
+.text           0x0000000000000000        0x0
+ .text          0x0000000000000000        0x0 ./bin/sm.obj
+
+sm$text         0x0000000000000000      0x680
+ ./bin/sm.obj(cseg)
+ cseg           0x0000000000000000      0x67d ./bin/sm.obj
+                0x0000000000000000                ep
+
+sm$data         0x0000000000000680      0x2d0
+ ./bin/sm.obj(dseg)
+ dseg           0x0000000000000680      0x2c7 ./bin/sm.obj
+
+.reloc          0x0000000000000950        0x0
+ .reloc         0x0000000000000950        0x0 dll stuff
+
+sm$bss          0x0000000000000950       0x42
+                0x0000000000000950                bseg_start = .
+ ./bin/sm.obj(bseg)
+ bseg           0x0000000000000950       0x42 ./bin/sm.obj
+                0x0000000000000992                bseg_end = .
+                0x0000000000000992                bseg_len = (bseg_end - bseg_start)
+
+sm$stack        0x0000000000000950     0x1000
+ ./bin/sm.obj(sseg)
+ sseg           0x0000000000000950     0x1000 ./bin/sm.obj
+OUTPUT(./bin/sm.exe pei-x86-64)
+LOAD dll stuff
