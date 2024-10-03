@@ -154,6 +154,7 @@ spaceOk:
     mov qword [rbp + loadProg.pfcb1], rax
     lea rax, qword [r8 + psp.fcb2]
     mov qword [rbp + loadProg.pfcb2], rax
+;   breakpoint
 loadLp:
     xor eax, eax
     mov qword [rbp + loadProg.initRSP], rax ;Reset the return values to 0
@@ -184,7 +185,7 @@ loadLp:
     mov qword [rdi + psda.pInt24h], rbx
     lea rbx, interruptExit
     mov qword [rdi + psda.pInt2Eh], rbx
-
+;   breakpoint
     mov rbx, qword [rbp + loadProg.initRSP]
     mov qword [rdi + psda.qRSP], rbx ;Store the Stack value!
     mov rax, qword [rbp + loadProg.initRIP] 

@@ -2,7 +2,7 @@
 cmdStr      db "CMD="   ;String to search for in the environment
 dfltShell   db "A:\COMMAND.COM",0 ;Default session shell string
 dfltShell2  db "A:\DOS\COMMAND.COM",0    ;Str2 is str1 not present
-cmdTail     db 2, "/P",CR   ;Default command tail
+cmdTail     db 10, "/P /E:2048",CR   ;Default command tail
 
 
 ;Static Error Strings 

@@ -24,7 +24,7 @@ shellEntry:
     rep movsb   ;Transfer over the SDA
 
     mov qword [dCurSess], SM_SESSION    ;Ensure we dont reenter shell!
-    mov rbx, pPsdaTbl  
+    mov rbx, qword [pPsdaTbl]
     mov qword [pCurSess], rbx           ;Setup internal data properly!
 
     mov ebx, SM_SESSION ;Use this as the screen number
@@ -195,9 +195,11 @@ getProcName:
 getPsdaPtr:
 ;Input: ecx = Number of the psda to get the pointer of!
 ;Output: rdi -> PSDA requested
+    mov rdi, qword [pPsdaTbl]
+    test ecx, ecx   ;Pick off the case where session number is 0.
+    retz
     push rax
     push rcx
-    mov rdi, qword [pPsdaTbl]
     mov eax, dword [dPsdaLen]
 .lp:
     add rdi, rax

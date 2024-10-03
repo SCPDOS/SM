@@ -15,7 +15,8 @@ i22hHdlr:
     lea rdx, sesFrozStr
     mov eax, 0900h
     int 21h
-    jmp short $ - 2 ;Enter an infinite loop
+.lp:
+    jmp short .lp ;Enter an infinite loop
 
 ;------------------------------------------------------------
 ;Int 2Ah Dispatcher
@@ -133,8 +134,13 @@ gotoSession:
 ; with IF off.
 ;The only time this will not happen is on initial program load which is fine.
     mov rbx, qword [pCurSess]
-    lea rsp, qword [rbx + psda.sRegsTbl]
-    popfq
+    lea rsp, qword [rbx + psda.sRegsTbl + 8]    ;Skip reloading the flags here!
+;We load the flags to their original state after we have switched back to the 
+; application stack because we start applications with Interrupts on. Thus,
+; if an interrupt occurs during the popping of the register stack, this 
+; may corrupt data in the psda. Thus we only load rflags once we are on the
+; application stack (which in the dangerous case, i.e. program init, is 
+; always large enough to handle an interrupt... unless its a very full .COM file)!
     pop r15
     pop r14
     pop r13
@@ -152,5 +158,7 @@ gotoSession:
     pop rax
     xchg qword [pCurSess], rbx
     mov rsp, qword [rbx + psda.qRSP]
+    push qword [rbx + psda.sRegsTbl]    ;Reload the flags once we have switched stacks!
+    popfq
     xchg qword [pCurSess], rbx
     return
