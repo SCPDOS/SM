@@ -1,8 +1,5 @@
 /*Linker script for DOS*/
 
-/*Order of module linkage: TOP -> OEMINIT -> SYSINIT -> DOS -> Drivers -> EOF*/
-
-
 SECTIONS {
     .text : {
 
