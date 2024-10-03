@@ -2,7 +2,7 @@
 cmdStr      db "CMD="   ;String to search for in the environment
 dfltShell   db "A:\COMMAND.COM",0 ;Default session shell string
 dfltShell2  db "A:\DOS\COMMAND.COM",0    ;Str2 is str1 not present
-cmdTail     db 10, "/P /E:2048",CR   ;Default command tail
+cmdTail     db 10, "/P /E:2048",CR   ;Default command tail, ensure an environment!
 
 
 ;Static Error Strings 
@@ -19,9 +19,10 @@ sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
 ;Shell Strings
 newlineStr  db CR,LF,"$"
 uline       db 80 dup ("-"),"$"
+sessStr     db 9 dup (SPC), "Current Sessions", 29 dup (SPC)
 numSesStr   db "Number of sessions"
 colonStr    db ": $"
-sessStr     db "Current Sessions:",CR,LF,"$"
+
 promptStr   db "Enter your desired session number...> $"
 helpStr     db CR,LF,LF,"Strike ? to reset the screen",CR,LF,"$"
 ;Session default process names

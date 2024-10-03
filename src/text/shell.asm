@@ -41,15 +41,13 @@ shellMain:
 ;Printing the screen header!
     lea rdx, ttlStr
     call puts
-    lea rdx, numSesStr
+    lea rdx, sessStr
     call puts
     mov edx, dword [dMaxSesIndx]    ;This is also number of USER sessions
     inc edx     ;Add 1 to include the SM session
     add dl, "0" ;Convert to ASCII char
     call putch
     call putNewline
-    lea rdx, sessStr
-    call puts
     lea rdx, uline
     call puts
     call putNewline
