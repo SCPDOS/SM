@@ -159,6 +159,6 @@ gotoSession:
     xchg qword [pCurSess], rbx
     mov rsp, qword [rbx + psda.qRSP]
     push qword [rbx + psda.sRegsTbl]    ;Reload the flags once we have switched stacks!
-    popfq
-    xchg qword [pCurSess], rbx
+    xchg qword [pCurSess], rbx  ;Now swap things back  
+    popfq   ;Pop flags back right at the end :)
     return

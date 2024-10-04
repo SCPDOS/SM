@@ -2,9 +2,32 @@
 
 shellEntry:
     cld     ;Ensure that rep writes are the right way!
-    lea rsp, STACK_END  ;Set now to internal shell stack
-    ;Save the current Int 22h, 23h and 24h handlers.
+    lea rsp, STACK_END  ;Set now to internal shell stack! 
+    ;Safe as we are cannot reenter here :)
+
+;Save the current SDA state in the PSDA for the session we are sleeping.
     mov rdi, qword [pCurSess]
+    push rdi    ;Save the CurSess pointer for use later!
+    lea rdi, qword [rdi + psda.sdaCopy] ;Point rdi to the sda space
+    mov rsi, qword [pDosSda]
+    mov ecx, dword [dSdaLen]
+    rep movsb   ;Transfer over the SDA
+    pop rdi
+;Drop the critical error and inDos flags in the SDA to trick DOS into thinking 
+; the SDA is completely safe to use. This is necessary for if we are swapping 
+; sessions mid Int 24h and/or if we are in a nested DOS call. Since we have 
+; backed up the SDA, we can restore DOS to its previous state when switching 
+; back and in this session we can proceed happily. This is a simpler 
+; alternative to copying the full SM SDA copy into the DOS SDA.
+    mov rsi, qword [pDosSda]
+    mov word [rsi], 0
+
+;Save the current Int 22h, 23h and 24h handlers.
+;NOTE!!! This cancels all critical section locks since it counts as a 
+; disk operation, however since we cannot enter SM while the critical
+; section lock is high, this is fine. When adding the timer tick swapper
+; we need to move away from using int 21h for getting/setting interrupts.
+;Use 2F for getting and copy the DOS routine internally for setting.
     mov eax, 3522h
     int 21h
     mov qword [rdi + psda.pInt22h], rbx
@@ -17,11 +40,6 @@ shellEntry:
     mov eax, 352Eh
     int 21h
     mov qword [rdi + psda.pInt2Eh], rbx
-    ;Save the current SDA state in the PSDA for the session we are sleeping.
-    lea rdi, qword [rdi + psda.sdaCopy] ;Point rdi to the sda space
-    mov rsi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb   ;Transfer over the SDA
 
     mov qword [dCurSess], SM_SESSION    ;Ensure we dont reenter shell!
     mov rbx, qword [pPsdaTbl]
@@ -140,10 +158,9 @@ prepLaunch:
     mov eax, 2522h
     int 21h
 ;Now copy over the SDA into place.
-    lea rdi, qword [rdi + psda.sdaCopy]
-    mov rsi, qword [pDosSda]
+    lea rsi, qword [rdi + psda.sdaCopy]
+    mov rdi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
-    xchg rdi, rsi
     rep movsb
     jmp gotoSession ;And exit :)
 

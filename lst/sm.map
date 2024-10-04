@@ -29,27 +29,27 @@ LOAD ./bin/sm.obj
 .text           0x0000000000000000        0x0
  .text          0x0000000000000000        0x0 ./bin/sm.obj
 
-sm$text         0x0000000000000000      0x680
+sm$text         0x0000000000000000      0x690
  ./bin/sm.obj(cseg)
- cseg           0x0000000000000000      0x676 ./bin/sm.obj
+ cseg           0x0000000000000000      0x681 ./bin/sm.obj
                 0x0000000000000000                ep
 
-sm$data         0x0000000000000680      0x300
+sm$data         0x0000000000000690      0x300
  ./bin/sm.obj(dseg)
- dseg           0x0000000000000680      0x2f1 ./bin/sm.obj
+ dseg           0x0000000000000690      0x2f1 ./bin/sm.obj
 
-.reloc          0x0000000000000980        0x0
- .reloc         0x0000000000000980        0x0 dll stuff
+.reloc          0x0000000000000990        0x0
+ .reloc         0x0000000000000990        0x0 dll stuff
 
-sm$bss          0x0000000000000980       0x42
-                0x0000000000000980                bseg_start = .
+sm$bss          0x0000000000000990       0x42
+                0x0000000000000990                bseg_start = .
  ./bin/sm.obj(bseg)
- bseg           0x0000000000000980       0x42 ./bin/sm.obj
-                0x00000000000009c2                bseg_end = .
-                0x00000000000009c2                bseg_len = (bseg_end - bseg_start)
+ bseg           0x0000000000000990       0x42 ./bin/sm.obj
+                0x00000000000009d2                bseg_end = .
+                0x00000000000009d2                bseg_len = (bseg_end - bseg_start)
 
-sm$stack        0x0000000000000980     0x1000
+sm$stack        0x0000000000000990     0x1000
  ./bin/sm.obj(sseg)
- sseg           0x0000000000000980     0x1000 ./bin/sm.obj
+ sseg           0x0000000000000990     0x1000 ./bin/sm.obj
 OUTPUT(./bin/sm.exe pei-x86-64)
 LOAD dll stuff
