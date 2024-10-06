@@ -18,6 +18,19 @@ i22hHdlr:
 .lp:
     jmp short .lp ;Enter an infinite loop
 
+i22hShell:
+;Simply reset the screen and print the info again!
+    jmp resetScreen
+
+i23hHdlr:
+;Default i23 handler, relaunch the shell.
+;Not doing so will reenter the call on a newline...
+    stc
+    ret 8
+i24hHdlr:
+    mov al, 3   ;Always FAIL
+interruptExit:  ;Used to overwrite Int 2Eh
+    iretq
 ;------------------------------------------------------------
 ;Int 2Ah Dispatcher
 ;------------------------------------------------------------
@@ -35,7 +48,6 @@ i2AhDisp:
     je critReset    ;We've been signalled to remove locks and is safe to do so!
     cmp ah, 84h
     je keybIntercept
-interruptExit:  ;Used to overwrite Int 2Eh
     iretq
 
 status:    ;AH=00h

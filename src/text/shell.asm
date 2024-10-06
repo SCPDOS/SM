@@ -3,7 +3,7 @@
 shellEntry:
     cld     ;Ensure that rep writes are the right way!
     lea rsp, STACK_END  ;Set now to internal shell stack! 
-    ;Safe as we are cannot reenter here :)
+;Safe as we are cannot reenter here :)
 
 ;Save the current SDA state in the PSDA for the session we are sleeping.
     mov rdi, qword [pCurSess]
@@ -13,38 +13,48 @@ shellEntry:
     mov ecx, dword [dSdaLen]
     rep movsb   ;Transfer over the SDA
     pop rdi
-;Drop the critical error and inDos flags in the SDA to trick DOS into thinking 
-; the SDA is completely safe to use. This is necessary for if we are swapping 
-; sessions mid Int 24h and/or if we are in a nested DOS call. Since we have 
-; backed up the SDA, we can restore DOS to its previous state when switching 
-; back and in this session we can proceed happily. This is a simpler 
-; alternative to copying the full SM SDA copy into the DOS SDA.
-    mov rsi, qword [pDosSda]
-    mov word [rsi], 0
 
-;Save the current Int 22h, 23h and 24h handlers.
-;NOTE!!! This cancels all critical section locks since it counts as a 
-; disk operation, however since we cannot enter SM while the critical
-; section lock is high, this is fine. When adding the timer tick swapper
-; we need to move away from using int 21h for getting/setting interrupts.
-;Use 2F for getting and copy the DOS routine internally for setting.
-    mov eax, 3522h
-    int 21h
+;Save the current Int 22h, 23h and 24h handlers in the paused sessions' PSDA.
+    mov eax, 22h
+    call getIntVector
     mov qword [rdi + psda.pInt22h], rbx
-    mov eax, 3523h
-    int 21h
+    mov eax, 23h
+    call getIntVector
     mov qword [rdi + psda.pInt23h], rbx
-    mov eax, 3524h
-    int 21h
+    mov eax, 24h
+    call getIntVector
     mov qword [rdi + psda.pInt24h], rbx
-    mov eax, 352Eh
-    int 21h
+    mov eax, 2Eh
+    call getIntVector
     mov qword [rdi + psda.pInt2Eh], rbx
 
+;Set the SM as the current active session
     mov qword [dCurSess], SM_SESSION    ;Ensure we dont reenter shell!
     mov rbx, qword [pPsdaTbl]
     mov qword [pCurSess], rbx           ;Setup internal data properly!
+;Set the SDA to the SM's SDA. Every time we swap to the SM, we use the SDA
+; as if it was the SDA on initial entry to the SM, i.e. the SDA we save
+; on init. Thus, we are guaranteed a smooth experience in the SM!
+    lea rsi, qword [rbx + psda.sdaCopy] ;Point rdi to the sda space
+    mov rdi, qword [pDosSda]
+    mov ecx, dword [dSdaLen]
+    rep movsb   ;Transfer over the SDA
 
+;Set the SM interrupt handlers.
+    mov rdx, qword [rbx + psda.pInt24h]
+    mov eax, 24h
+    call setIntVector   ;Fail on critical errors (shouldn't happen).
+    mov rdx, qword [rbx + psda.pInt23h]
+    mov eax, 23h
+    call setIntVector   ;Restart the shell
+;Strictly speaking, setting int 22h is unnecessary as if we exit (^C)
+; it takes the pointer from the PSP which init sets to this vector 
+; anyway.
+    mov rdx, qword [rbx + psda.pInt22h]
+    mov eax, 22h
+    call setIntVector 
+
+;Now swap the screen to the SM screen!
     mov ebx, SM_SESSION ;Use this as the screen number
     mov eax, 1          ;Swap screen command!
     call qword [pConScrHlp] ;Set the screen to the SM_SESSION screen
@@ -132,37 +142,40 @@ shellMain:
     cmp dword [dMaxSesIndx], ecx
     jb badChoice
 ;Now we get ready to leave...
-;cl (ecx) has the new session number
 prepLaunch:
+;Entered with cl (ecx) containing the new (valid) session number
+
+;Start by swapping the screen to the screen for the new session!
     push rcx
     mov ebx, ecx ;Use this as the screen number
     mov eax, 1          ;Swap screen command!
     call qword [pConScrHlp] ;Set the screen to the SM_SESSION screen
     pop rcx
-
+;Set the newly selected session as the current active session! 
     cli ;Stop interrupts again
     mov dword [dCurSess], ecx   ;Set the current session number
     call getPsdaPtr ;Get the pointer in rdi for session we selected
     mov qword [pCurSess], rdi   ;Set the pointer to session psda here
-;Here we setup the new session interrupt endpoints.
+;Here setup the newly selected session's DOS interrupts.
     mov rdx, qword [rdi + psda.pInt2Eh]
-    mov eax, 252Eh
-    int 21h
+    mov eax, 2Eh
+    call setIntVector
     mov rdx, qword [rdi + psda.pInt24h]
-    mov eax, 2524h
-    int 21h
+    mov eax, 24h
+    call setIntVector
     mov rdx, qword [rdi + psda.pInt23h]
-    mov eax, 2523h
-    int 21h
+    mov eax, 23h
+    call setIntVector
     mov rdx, qword [rdi + psda.pInt22h]
-    mov eax, 2522h
-    int 21h
-;Now copy over the SDA into place.
+    mov eax, 22h
+    call setIntVector
+;Now copy over the newly selected sessions SDA into place.
     lea rsi, qword [rdi + psda.sdaCopy]
     mov rdi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
     rep movsb
-    jmp gotoSession ;And exit :)
+;And now we goto the new session!
+    jmp gotoSession 
 
 badChoice:
 ;Beep at the user and then reset the screen, show display!
@@ -206,6 +219,39 @@ getProcName:
     sti
     return
 
+getIntVector:
+;Called with:
+;Interrupts Off!
+; al = Interrupt number
+;Returns: 
+; rbx -> Ptr to interrupt handler
+    sidt [pIDT]    ;Get the current IDT base pointer
+    movzx eax, al
+    shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
+    add rax, qword [pIDT.base]    
+    xor ebx, ebx
+    mov ebx, dword [rax + 8]    ;Get bits 63...32
+    shl rbx, 10h    ;Push the high dword high
+    mov bx, word [rax + 6]      ;Get bits 31...16
+    shl rbx, 10h    ;Push word 2 into posiiton
+    mov bx, word [rax]          ;Get bits 15...0
+    return
+
+setIntVector:
+;Called with:
+;Interrupts Off!
+;   rdx = Pointer to interrupt handler
+;   al = Interrupt number
+    sidt [pIDT]    ;Get the current IDT base pointer
+    movzx eax, al
+    shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
+    add rax, qword [pIDT.base]    
+    mov word [rax], dx  ;Get low word into offset 15...0
+    shr rdx, 10h    ;Bring next word low
+    mov word [rax + 6], dx  ;Get low word into offset 31...16
+    shr rdx, 10h    ;Bring last dword low
+    mov dword [rax + 8], edx
+    return
 
 getPsdaPtr:
 ;Input: ecx = Number of the psda to get the pointer of!

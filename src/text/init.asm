@@ -21,15 +21,34 @@ proceedBss:
     mov ecx, bseg_len
     xor eax, eax
     rep stosb
-;Set ourselves to be our own parent to prevent accidental termination!
-    mov qword [r8 + psp.parentPtr], r8
-;Check that STDIO is not redirected. If it is, exit complaining!
-; TODO-TODO-TODO-TODO-TODO-TODO-TODO-TODO-TODO-TODO-TODO-TODO
+;Check that STDIO is not redirected from the standard console device.
+;This can be an AUX driver, the test for MCON compliance occurs below!
+;If it is, exit complaining!
+    xor ebx, ebx    ;STDIN
+    mov eax, 4400h  ;Get Hdl info
+    int 21h
+    mov ebx, edx    ;Save the returned word in bx
+    lea rdx, noIOCTLStr
+    jc exitBad
+    lea rdx, noStdinStr
+    and ebx, 81h    ;Save bits 7 and 0 (Char dev and STDIN device)
+    cmp ebx, 81h
+    jne exitBad
+
+    mov ebx, 1      ;STDOUT
+    mov eax, 4400h  ;Get Hdl info
+    int 21h
+    mov ebx, edx    ;Save the returned word in bx
+    lea rdx, noIOCTLStr
+    jc exitBad
+    lea rdx, noStdoutStr
+    and ebx, 82h    ;Save bits 7 and 1 (Char dev and STDOUT device)
+    cmp ebx, 82h
+    jne exitBad
 ;XCHG ptrs with MCON, driver specific IOCTL call
     xor esi, esi
     xor edi, edi
-    ;Push two 0's onto the stack to allocate struc on stack
-    push rsi
+    push rsi        ;Push two 0's onto the stack to allocate struc on stack
     push rsi
     mov rdx, rsp    ;Allocated structure on the stack
     mov word [rdx + mScrCap.wVer], 0100h
@@ -39,11 +58,11 @@ proceedBss:
     mov qword [rdx + mScrCap.qHlpPtr], rbx
     mov eax, 440Ch
     xor ebx, ebx    ;CON handle (STDIN)!
-    mov ecx, 0310h
+    mov ecx, 0310h  ;CON + Reports capacities!
     int 21h
     jnc mConOk
     lea rdx, noConStr
-    jmp short exitBad
+    jmp exitBad
 mConOk:
     mov rbx, qword [rdx + mScrCap.qHlpPtr]
     mov qword [pConScrHlp], rbx ;Store the help pointer
@@ -121,7 +140,13 @@ spaceOk:
 .shellFnd:
     mov qword [pCmdShell], rdx    ;Save the string to the program to spawn
 
-    lea rdx, i22hHdlr   ;Install the custom Int 22h handler
+;Setup this Int 22h. If the COMMAND.COM of a session exits, then 
+; this handler is executed. COMMAND.COM when loaded as /P will override 
+; this in both the IDT and in its own PSP so this is very much for any
+; early accidents. Eventually, will replace this with a routine that 
+; tries to launch a new instance of the program specified in the sm.ini 
+; config file.
+    lea rdx, i22hHdlr   ;Install the tmp Int 22h handler!
     mov eax, 2522h
     int 21h
 
@@ -211,6 +236,22 @@ loadLp:
     jnz loadLp
 
     add rsp, loadProg_size  ;Reclaim the allocation in the end
+
+;Set ourselves to be our own parent now!
+    mov qword [r8 + psp.parentPtr], r8
+;Setup the default int 22h and int 23h of the SM in the PSP since we are our
+; own Parent. No need to set the interrupt vectors, thats done on entry to the 
+; shell.
+    mov rsi, qword [pPsdaTbl]   ;Get the PSDA table entry of SM
+    lea rdx, i22hShell
+    mov qword [r8 + psp.oldInt22h], rdx
+    mov qword [rsi + psda.pInt22h], rdx
+    lea rdx, i23hHdlr
+    mov qword [r8 + psp.oldInt23h], rdx
+    mov qword [rsi + psda.pInt23h], rdx
+    lea rdx, i24hHdlr
+    mov qword [r8 + psp.oldInt24h], rdx
+    mov qword [rsi + psda.pInt24h], rdx
 
 ;Now setup the Int 2Ah infrastructure.
     lea rdx, i2AhDisp

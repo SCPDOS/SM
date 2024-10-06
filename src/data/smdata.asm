@@ -13,6 +13,9 @@ noMemStr    db "Error 0004: Not enough memory to start Session Manager",CR,LF,"$
 noCmdStr    db "Error 0005: Default command interpreter not found",CR,LF,"$"
 noExecStr   db "Error 0006: Unable to start up session",CR,LF,
             db "            It is recommended you restart your machine...",CR,LF,"$"
+noIOCTLStr  db "Error 0007: Generic IOCTL error",CR,LF,"$"
+noStdinStr  db "Error 0008: STDIN Redirected from CON device",CR,LF,"$"
+noStdoutStr db "Error 0009: STDOUT Redirected from CON device",CR,LF,"$"
 
 sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
 
