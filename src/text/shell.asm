@@ -262,10 +262,8 @@ getPsdaPtr:
     push rax
     push rcx
     mov eax, dword [dPsdaLen]
-.lp:
+    mul ecx 
     add rdi, rax
-    dec ecx 
-    jnz .lp
     pop rcx
     pop rax
     return

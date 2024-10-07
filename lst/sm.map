@@ -31,7 +31,7 @@ LOAD ./bin/sm.obj
 
 sm$text         0x0000000000000000      0x7c0
  ./bin/sm.obj(cseg)
- cseg           0x0000000000000000      0x7be ./bin/sm.obj
+ cseg           0x0000000000000000      0x7bc ./bin/sm.obj
                 0x0000000000000000                ep
 
 sm$data         0x00000000000007c0      0x380
