@@ -4,64 +4,12 @@ shellEntry:
     cld     ;Ensure that rep writes are the right way!
     lea rsp, STACK_END  ;Set now to internal shell stack! 
 ;Safe as we are cannot reenter here :)
-
-;Save the current SDA state in the PSDA for the session we are sleeping.
-    mov rdi, qword [pCurSess]
-    push rdi    ;Save the CurSess pointer for use later!
-    lea rdi, qword [rdi + psda.sdaCopy] ;Point rdi to the sda space
-    mov rsi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb   ;Transfer over the SDA
-    pop rdi
-
-;Save the current Int 22h, 23h and 24h handlers in the paused sessions' PSDA.
-    mov eax, 22h
-    call getIntVector
-    mov qword [rdi + psda.pInt22h], rbx
-    mov eax, 23h
-    call getIntVector
-    mov qword [rdi + psda.pInt23h], rbx
-    mov eax, 24h
-    call getIntVector
-    mov qword [rdi + psda.pInt24h], rbx
-    mov eax, 2Eh
-    call getIntVector
-    mov qword [rdi + psda.pInt2Eh], rbx
-
-;Set the SM as the current active session
-    mov qword [dCurSess], SM_SESSION    ;Ensure we dont reenter shell!
-    mov rbx, qword [pPsdaTbl]
-    mov qword [pCurSess], rbx           ;Setup internal data properly!
-;Set the SDA to the SM's SDA. Every time we swap to the SM, we use the SDA
-; as if it was the SDA on initial entry to the SM, i.e. the SDA we save
-; on init. Thus, we are guaranteed a smooth experience in the SM!
-    lea rsi, qword [rbx + psda.sdaCopy] ;Point rdi to the sda space
-    mov rdi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb   ;Transfer over the SDA
-
-;Set the SM interrupt handlers.
-    mov rdx, qword [rbx + psda.pInt24h]
-    mov eax, 24h
-    call setIntVector   ;Fail on critical errors (shouldn't happen).
-    mov rdx, qword [rbx + psda.pInt23h]
-    mov eax, 23h
-    call setIntVector   ;Restart the shell
-;Strictly speaking, setting int 22h is unnecessary as if we exit (^C)
-; it takes the pointer from the PSP which init sets to this vector 
-; anyway.
-    mov rdx, qword [rbx + psda.pInt22h]
-    mov eax, 22h
-    call setIntVector 
-
-;Now swap the screen to the SM screen!
-    mov ebx, SM_SESSION ;Use this as the screen number
-    mov eax, 1          ;Swap screen command!
-    call qword [pConScrHlp] ;Set the screen to the SM_SESSION screen
+    mov ecx, SM_SESSION
+    call swapSession
     sti     ;Now reenable interrupts! We are safe to do so! 
 resetScreen:            ;Now reset the screen!
     mov eax, 2          ;Driver Reset screen command!
-    call qword [pConScrHlp] 
+    call qword [pConIOCtl] 
     ;And fall through to the main print loop
 shellMain:
 ;The shell main routine prints the number of sessions,
@@ -144,37 +92,7 @@ shellMain:
 ;Now we get ready to leave...
 prepLaunch:
 ;Entered with cl (ecx) containing the new (valid) session number
-
-;Start by swapping the screen to the screen for the new session!
-    push rcx
-    mov ebx, ecx ;Use this as the screen number
-    mov eax, 1          ;Swap screen command!
-    call qword [pConScrHlp] ;Set the screen to the SM_SESSION screen
-    pop rcx
-;Set the newly selected session as the current active session! 
-    cli ;Stop interrupts again
-    mov dword [dCurSess], ecx   ;Set the current session number
-    call getPsdaPtr ;Get the pointer in rdi for session we selected
-    mov qword [pCurSess], rdi   ;Set the pointer to session psda here
-;Here setup the newly selected session's DOS interrupts.
-    mov rdx, qword [rdi + psda.pInt2Eh]
-    mov eax, 2Eh
-    call setIntVector
-    mov rdx, qword [rdi + psda.pInt24h]
-    mov eax, 24h
-    call setIntVector
-    mov rdx, qword [rdi + psda.pInt23h]
-    mov eax, 23h
-    call setIntVector
-    mov rdx, qword [rdi + psda.pInt22h]
-    mov eax, 22h
-    call setIntVector
-;Now copy over the newly selected sessions SDA into place.
-    lea rsi, qword [rdi + psda.sdaCopy]
-    mov rdi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb
-;And now we goto the new session!
+    call swapSession
     jmp gotoSession 
 
 badChoice:
@@ -217,6 +135,72 @@ getProcName:
     clc     ;Clear CF
 .exit:
     sti
+    return
+
+swapSession:
+;Saves the current session information and sets the session information for a 
+; new session. Is called with interrupts turned off!
+;Input: ecx = Session number to switch to.
+;       dword [dCurSess], qword [pCurSess] -> Current session identifiers.
+;Output: ecx set as current session.
+;Must be called on a safe to use stack.
+    mov ebp, ecx    ;Save the session number in ebp!
+
+    mov rdi, qword [pCurSess]
+    push rdi    ;Save the CurSess pointer for use later!
+    lea rdi, qword [rdi + psda.sdaCopy] ;Point rdi to the sda space
+    mov rsi, qword [pDosSda]
+    mov ecx, dword [dSdaLen]
+    rep movsb   ;Transfer over the SDA
+    pop rdi
+;Save the current Int 22h, 23h and 24h handlers in the paused sessions' PSDA.
+    mov eax, 22h
+    call getIntVector
+    mov qword [rdi + psda.pInt22h], rbx
+    mov eax, 23h
+    call getIntVector
+    mov qword [rdi + psda.pInt23h], rbx
+    mov eax, 24h
+    call getIntVector
+    mov qword [rdi + psda.pInt24h], rbx
+    mov eax, 2Eh
+    call getIntVector
+    mov qword [rdi + psda.pInt2Eh], rbx
+;-----------------------------------------------------------------
+;-----------------NEW SESSION IS SWAPPED TO BELOW-----------------
+;-----------------------------------------------------------------
+;Set the new session as the current active session
+    mov dword [dCurSess], ebp  ;Store the session number
+    mov ecx, ebp  
+    call getPsdaPtr ;Get ptr in rdi to the current PSDA table
+    mov rbx, rdi
+    mov qword [pCurSess], rbx           ;Setup internal data properly!
+
+;Set the SDA to the new session's SDA. 
+    lea rsi, qword [rbx + psda.sdaCopy] ;Point rdi to the sda space
+    mov rdi, qword [pDosSda]
+    mov ecx, dword [dSdaLen]
+    rep movsb   ;Transfer over the SDA
+
+;Set the new sessions' DOS interrupt handlers.
+    mov rdx, qword [rbx + psda.pInt2Eh]
+    mov eax, 2Eh
+    call setIntVector    
+    mov rdx, qword [rbx + psda.pInt24h]
+    mov eax, 24h
+    call setIntVector
+    mov rdx, qword [rbx + psda.pInt23h]
+    mov eax, 23h
+    call setIntVector
+    mov rdx, qword [rbx + psda.pInt22h]
+    mov eax, 22h
+    call setIntVector 
+
+;Now swap the screen to new sessions' screen!
+    mov ebx, ebp        ;Put the session number in bl
+    mov eax, 1          ;Swap screen command!
+    call qword [pConIOCtl] ;Set the screen to the number in bl
+
     return
 
 getIntVector:

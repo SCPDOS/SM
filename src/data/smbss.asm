@@ -6,7 +6,7 @@ pPsdaTbl    dq ?    ;Pointer to the Per-Session data area table
 dPsdaLen    dd ?    ;Length of each psda
 dSdaLen     dd ?    ;Use the longer length. Change this in the future...
 dMaxSesIndx dd ?    ;Maximum session index! Max Session number = 7
-pConScrHlp  dq ?    ;Ptr to the ConHelp
+pConIOCtl   dq ?    ;Ptr to the direct Console IOCtl routine
 
 ;The below is a temp var until we make a good routine for if the 
 ; top level program of a session exits

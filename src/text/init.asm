@@ -65,7 +65,7 @@ proceedBss:
     jmp exitBad
 mConOk:
     mov rbx, qword [rdx + mScrCap.qHlpPtr]
-    mov qword [pConScrHlp], rbx ;Store the help pointer
+    mov qword [pConIOCtl], rbx ;Store the help pointer
     movzx ebx, byte [rdx + mScrCap.bScrNum]
     mov eax, 8      ;Maximum supported, 8 screens
     cmp ebx, eax
@@ -101,7 +101,7 @@ screensOk:
     lea rdx, noMemStr
 exitMcon:
     mov eax, 3  ;Signal to uninstall ourselves from MCON
-    call qword [pConScrHlp] ;Deinstall our help pointer from the MCON 
+    call qword [pConIOCtl] ;Deinstall our help pointer from the MCON 
     jmp exitBad
 spaceOk:
     push rax        ;Save the pointer to the allocated block!
