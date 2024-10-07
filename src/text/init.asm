@@ -271,4 +271,4 @@ loadLp:
     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
 ;Now we are ready to jump!
     mov ecx, 1 ;Start with task 1
-    jmp prepLaunch
+    jmp gotoSession

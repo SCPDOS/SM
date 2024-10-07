@@ -1,19 +1,16 @@
 ;This is the main Session Manager "interactive" shell.
 
+    EXTERN sm$shlTOS
+
 shellEntry:
-    cld     ;Ensure that rep writes are the right way!
-    lea rsp, STACK_END  ;Set now to internal shell stack! 
-;Safe as we are cannot reenter here :)
-    mov ecx, SM_SESSION
-    call swapSession
+;This is the entry stub into the SM shell!
+    lea rsp, sm$shlTOS  ;Set now to internal shell stack! 
     sti     ;Now reenable interrupts! We are safe to do so! 
-resetScreen:            ;Now reset the screen!
-    mov eax, 2          ;Driver Reset screen command!
-    call qword [pConIOCtl] 
-    ;And fall through to the main print loop
+;And fall through to the main print loop
 shellMain:
 ;The shell main routine prints the number of sessions,
 ; the program names.
+    call resetScreen
 ;Printing the screen header!
     lea rdx, ttlStr
     call puts
@@ -89,17 +86,16 @@ shellMain:
     sub cl, "0"
     cmp dword [dMaxSesIndx], ecx
     jb badChoice
-;Now we get ready to leave...
-prepLaunch:
-;Entered with cl (ecx) containing the new (valid) session number
-    call swapSession
+;Jump with with cl containing the new (valid) session number
     jmp gotoSession 
-
 badChoice:
 ;Beep at the user and then reset the screen, show display!
     mov dl, 07h ;Beep at the user (Do I want to do that?)
     call putch
-    jmp resetScreen
+resetScreen:            ;Now reset the screen!
+    mov eax, 2          ;Driver Reset screen command!
+    call qword [pConIOCtl]
+    return 
 
 ;Shell handy routines
 getProcName:
@@ -136,122 +132,6 @@ getProcName:
 .exit:
     sti
     return
-
-swapSession:
-;Saves the current session information and sets the session information for a 
-; new session. Is called with interrupts turned off!
-;Input: ecx = Session number to switch to.
-;       dword [dCurSess], qword [pCurSess] -> Current session identifiers.
-;Output: ecx set as current session.
-;Must be called on a safe to use stack.
-    mov ebp, ecx    ;Save the session number in ebp!
-
-    mov rdi, qword [pCurSess]
-    push rdi    ;Save the CurSess pointer for use later!
-    lea rdi, qword [rdi + psda.sdaCopy] ;Point rdi to the sda space
-    mov rsi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb   ;Transfer over the SDA
-    pop rdi
-;Save the current Int 22h, 23h and 24h handlers in the paused sessions' PSDA.
-    mov eax, 22h
-    call getIntVector
-    mov qword [rdi + psda.pInt22h], rbx
-    mov eax, 23h
-    call getIntVector
-    mov qword [rdi + psda.pInt23h], rbx
-    mov eax, 24h
-    call getIntVector
-    mov qword [rdi + psda.pInt24h], rbx
-    mov eax, 2Eh
-    call getIntVector
-    mov qword [rdi + psda.pInt2Eh], rbx
-;-----------------------------------------------------------------
-;-----------------NEW SESSION IS SWAPPED TO BELOW-----------------
-;-----------------------------------------------------------------
-;Set the new session as the current active session
-    mov dword [dCurSess], ebp  ;Store the session number
-    mov ecx, ebp  
-    call getPsdaPtr ;Get ptr in rdi to the current PSDA table
-    mov rbx, rdi
-    mov qword [pCurSess], rbx           ;Setup internal data properly!
-
-;Set the SDA to the new session's SDA. 
-    lea rsi, qword [rbx + psda.sdaCopy] ;Point rdi to the sda space
-    mov rdi, qword [pDosSda]
-    mov ecx, dword [dSdaLen]
-    rep movsb   ;Transfer over the SDA
-
-;Set the new sessions' DOS interrupt handlers.
-    mov rdx, qword [rbx + psda.pInt2Eh]
-    mov eax, 2Eh
-    call setIntVector    
-    mov rdx, qword [rbx + psda.pInt24h]
-    mov eax, 24h
-    call setIntVector
-    mov rdx, qword [rbx + psda.pInt23h]
-    mov eax, 23h
-    call setIntVector
-    mov rdx, qword [rbx + psda.pInt22h]
-    mov eax, 22h
-    call setIntVector 
-
-;Now swap the screen to new sessions' screen!
-    mov ebx, ebp        ;Put the session number in bl
-    mov eax, 1          ;Swap screen command!
-    call qword [pConIOCtl] ;Set the screen to the number in bl
-
-    return
-
-getIntVector:
-;Called with:
-;Interrupts Off!
-; al = Interrupt number
-;Returns: 
-; rbx -> Ptr to interrupt handler
-    sidt [pIDT]    ;Get the current IDT base pointer
-    movzx eax, al
-    shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
-    add rax, qword [pIDT.base]    
-    xor ebx, ebx
-    mov ebx, dword [rax + 8]    ;Get bits 63...32
-    shl rbx, 10h    ;Push the high dword high
-    mov bx, word [rax + 6]      ;Get bits 31...16
-    shl rbx, 10h    ;Push word 2 into posiiton
-    mov bx, word [rax]          ;Get bits 15...0
-    return
-
-setIntVector:
-;Called with:
-;Interrupts Off!
-;   rdx = Pointer to interrupt handler
-;   al = Interrupt number
-    sidt [pIDT]    ;Get the current IDT base pointer
-    movzx eax, al
-    shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
-    add rax, qword [pIDT.base]    
-    mov word [rax], dx  ;Get low word into offset 15...0
-    shr rdx, 10h    ;Bring next word low
-    mov word [rax + 6], dx  ;Get low word into offset 31...16
-    shr rdx, 10h    ;Bring last dword low
-    mov dword [rax + 8], edx
-    return
-
-getPsdaPtr:
-;Input: ecx = Number of the psda to get the pointer of!
-;Output: rdi -> PSDA requested
-    mov rdi, qword [pPsdaTbl]
-    test ecx, ecx   ;Pick off the case where session number is 0.
-    retz
-    push rax
-    push rcx
-    mov eax, dword [dPsdaLen]
-    mul ecx 
-    add rdi, rax
-    pop rcx
-    pop rax
-    return
-
 putch:
     mov eax, 0200h
     int 21h
@@ -263,3 +143,34 @@ puts:
 putNewline:
     lea rdx, newlineStr
     jmp puts
+
+;------------------------------------------------------------
+;Default SM Int 22h Handler
+;------------------------------------------------------------
+;If this is ever executed, the session will enter a special 
+; state where the user is prompted to type in the name of
+; the program to launch in this session. 
+;For now, it will simply try and relaunch a program.
+;For for now, it will simply print a string and freeze.
+;This will never happen as no COMMAND.COM can be exited
+; with the defaults we have set up.
+i22hHdlr:
+    lea rdx, sesFrozStr
+    mov eax, 0900h
+    int 21h
+.lp:
+    jmp short .lp ;Enter an infinite loop
+
+i22hShell:
+;Simply reset the screen and print the info again!
+    jmp resetScreen
+
+i23hHdlr:
+;Default i23 handler, relaunch the shell.
+;Not doing so will reenter the call on a newline...
+    stc
+    ret 8
+i24hHdlr:
+    mov al, 3   ;Always FAIL
+interruptExit:  ;Used to overwrite Int 2Eh
+    iretq

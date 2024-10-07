@@ -21,6 +21,10 @@ SECTIONS {
     }
 
     sm$stack (NOLOAD) : {
-        ./bin/sm.obj(sseg)
+        ./bin/sm.obj(sseg$int)
+        sm$intTOS = .;
+        /*Put the interrupt stack lower than that shell stack!*/
+        ./bin/sm.obj(sseg$shl)
+        sm$shlTOS = .;
     }
 }

@@ -15,6 +15,9 @@ Segment dseg data private align=16
 Segment bseg bss public align=16
 %include "./src/data/smbss.asm"
 
-Segment sseg bss stack align=16
-    dq 200h dup (?)  ;4K stack is fine
-STACK_END:
+Segment sseg$int bss stack align=16
+;This is the interrupt handlers' default stack. Only used during 
+; session swaps so it is ok (Interrupts are off).
+    dq 20h dup (?)   ;32 qword stack is fine for this!
+Segment sseg$shl bss stack align=16
+    dq 200h dup (?)  ;Total 4K stack is fine
