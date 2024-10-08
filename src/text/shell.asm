@@ -43,8 +43,8 @@ shellMain:
     lea rdx, waitStr    ;Now print the state of the session
     call puts
     ;Now get the string to print
-    call getPsdaPtr ;Get the psda ptr in rdi
-    mov rdx, qword [rdi + psda.sdaCopy + sda.currentPSP]    ;Get the PSPptr
+    call getPtdaPtr ;Get the ptda ptr in rdi
+    mov rdx, qword [rdi + ptda.sdaCopy + sda.currentPSP]    ;Get the PSPptr
     call getProcName    ;Get the process name ptr for process of PSP in rdx
     jnc .nameFound
     lea rdx, noNameStr
@@ -52,7 +52,7 @@ shellMain:
     jmp short .nextSession
 .nameFound:
     mov rdi, rdx    ;Copy the ptr here to get the len of the ASCIIZ string
-    push rcx        ;Save the number of the psda we are at
+    push rcx        ;Save the number of the ptda we are at
     mov eax, 1212h
     int 2Fh
     ;ecx now has the string length + terminating null
@@ -61,7 +61,7 @@ shellMain:
     mov ebx, 1  ;STDOUT
     mov eax, 4000h
     int 21h
-    pop rcx     ;Get back the psda number
+    pop rcx     ;Get back the ptda number
 .nextSession:
     call putNewline
     inc ecx
@@ -78,7 +78,7 @@ shellMain:
     int 21h
     movzx ecx, byte [rdx + 2]
     cmp cl, "?"
-    je resetScreen
+    je shellMain
     cmp cl, "1"
     jb badChoice
     cmp cl, "9"
@@ -92,6 +92,7 @@ badChoice:
 ;Beep at the user and then reset the screen, show display!
     mov dl, 07h ;Beep at the user (Do I want to do that?)
     call putch
+    jmp shellMain
 resetScreen:            ;Now reset the screen!
     mov eax, 2          ;Driver Reset screen command!
     call qword [pConIOCtl]
@@ -163,7 +164,7 @@ i22hHdlr:
 
 i22hShell:
 ;Simply reset the screen and print the info again!
-    jmp resetScreen
+    jmp shellMain
 
 i23hHdlr:
 ;Default i23 handler, relaunch the shell.

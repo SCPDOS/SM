@@ -81,17 +81,17 @@ mConOk:
     lea rdx, noScreenStr
     jmp exitBad
 screensOk:
-;Get the size of the SDA to know how big a psda actually is.
+;Get the size of the SDA to know how big a ptda actually is.
 ;    breakpoint
     mov eax, 5D06h
     int 21h
     mov qword [pDosSda], rsi
     mov dword [dSdaLen], ecx    ;Save the larger value :)
-    add ecx, psda_size
-    mov dword [dPsdaLen], ecx   ;Save the max length of a psda.
+    add ecx, ptda_size
+    mov dword [dPtdaLen], ecx   ;Save the max length of a ptda.
     mov eax, ecx
     inc ebx     ;Add 1 to get number of sessions 
-    mul ebx     ;Multiply number of sessions by the size of psda
+    mul ebx     ;Multiply number of sessions by the size of ptda
     add eax, 0Fh
     shr eax, 4  ;Round result up by a paragraph, turn into number of paragraphs
     mov ebx, eax    ;Put number of paragraphs into ebx
@@ -111,12 +111,12 @@ spaceOk:
     xor eax, eax
     rep stosb
     pop rdi         ;Get back the allocated block pointer!
-    mov qword [pPsdaTbl], rdi    ;Store the pointer to the psdaTbl here
-    mov qword [pCurSess], rdi    ;The session manager is the current session
-    mov dword [dCurSess], SM_SESSION
+    mov qword [pPtdaTbl], rdi    ;Store the pointer to the ptdaTbl here
+    mov qword [pCurTask], rdi    ;The session manager is the current task
+    mov dword [dCurTask], SM_SESSION
 ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
 ;    breakpoint
-    lea rdi, qword [rdi + psda.sdaCopy]
+    lea rdi, qword [rdi + ptda.sdaCopy]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Copy over the SDA as it stands now, in peacetime!
 
@@ -154,22 +154,22 @@ spaceOk:
     mov eax, 252Eh  ;Eliminate any COMMAND.COM hook that might be present!
     int 21h
 
-;Now we spawn each session one by one.
-;After each spawn, we copy the SDA into the psda for that session.
-;This way, each session has the right current psp, dta, drive and dos state.
+;Now we spawn each task one by one.
+;After each spawn, we copy the SDA into the ptda for that task.
+;This way, each task has the right current psp, dta, drive and dos state.
 ;After each spawn, pull the rax value from the child stack, replacing
 ; it with the rip value to start program execution. 
 ;Place 0202h flags, PSPptr in r8 and r9 and rax in rax on the register stack.
 
 ;Prepare the sda copy pointer
 ;    breakpoint
-    mov rdi, qword [pPsdaTbl]
-    mov ecx, dword [dPsdaLen]
-    add rdi, rcx    ;Go to the first user session PSDA
+    mov rdi, qword [pPtdaTbl]
+    mov ecx, dword [dPtdaLen]
+    add rdi, rcx    ;Go to the first user task PTDA
 
     sub rsp, loadProg_size  ;Make space for the loadprog structure
     mov rbp, rsp
-    mov ecx, dword [dMaxSesIndx]
+    mov ecx, 1  ;Start counting task numbers from 1
 ;Now setup the loadProgBlock on the stack
     xor eax, eax
     mov qword [rbp + loadProg.pEnv], rax    ;Copy the parent environment!
@@ -199,41 +199,44 @@ loadLp:
     int 21h
     jmp exitMcon
 .loadOk:
-;rdi points to the psda for this session
+;rdi points to the ptda for this task
     lea rax, i22hHdlr
-    mov qword [rdi + psda.pInt22h], rax
+    mov qword [rdi + ptda.pInt22h], rax
     mov eax, 3523h  ;Get the default Int 23h handler!
     int 21h
-    mov qword [rdi + psda.pInt23h], rbx
+    mov qword [rdi + ptda.pInt23h], rbx
     mov eax, 3524h  ;Get the default Int 24h handler!
     int 21h
-    mov qword [rdi + psda.pInt24h], rbx
+    mov qword [rdi + ptda.pInt24h], rbx
     lea rbx, interruptExit
-    mov qword [rdi + psda.pInt2Eh], rbx
+    mov qword [rdi + ptda.pInt2Eh], rbx
 ;   breakpoint
     mov rbx, qword [rbp + loadProg.initRSP]
-    mov qword [rdi + psda.qRSP], rbx ;Store the Stack value!
+    mov qword [rdi + ptda.qRSP], rbx ;Store the Stack value!
     mov rax, qword [rbp + loadProg.initRIP] 
     xchg rax, qword [rbx]   ;Swap the RIP value with the FCB words on the stack!
-    mov qword [rdi + psda.sRegsTbl + 15*8], rax ;Store rax @ rax on regstack!
+    mov qword [rdi + ptda.sRegsTbl + 15*8], rax ;Store rax @ rax on regstack!
     mov eax, 5100h  ;Get Current PSP in rbx
     int 21h
-    mov qword [rdi + psda.sRegsTbl + 7*8], rbx  ;Store PSP ptr @ r9 on regstack!
-    mov qword [rdi + psda.sRegsTbl + 8*8], rbx  ;Store PSP ptr @ r8 on regstack!
-    mov qword [rdi + psda.sRegsTbl], 0202h      ;Store default flags on regstack!
-;Now copy the SDA into the psda SDA
+    mov qword [rdi + ptda.sRegsTbl + 7*8], rbx  ;Store PSP ptr @ r9 on regstack!
+    mov qword [rdi + ptda.sRegsTbl + 8*8], rbx  ;Store PSP ptr @ r8 on regstack!
+    mov qword [rdi + ptda.sRegsTbl], 0202h      ;Store default flags on regstack!
+;Make sure to save the screen number assigned to this task!
+    mov dword [rdi + ptda.hScrnNum], ecx    ;Save the screen number of task!
+;Now copy the SDA into the ptda SDA
     push rcx
     mov rsi, qword [pDosSda]
-    lea rdi, qword [rdi + psda.sdaCopy]
+    lea rdi, qword [rdi + ptda.sdaCopy]
     mov ecx, dword [dSdaLen]
-    rep movsb   ;rdi now points to the next psda
+    rep movsb   ;rdi now points to the next ptda
     pop rcx
 ;Now reset the PSP back so that each process is a proper child of SM!
     mov eax, 5000h  ;Set current PSP
     mov rbx, r8
     int 21h
-    dec ecx
-    jnz loadLp
+    inc ecx
+    cmp ecx, dword [dMaxSesIndx]
+    jbe loadLp
 
     add rsp, loadProg_size  ;Reclaim the allocation in the end
 
@@ -242,17 +245,44 @@ loadLp:
 ;Setup the default int 22h and int 23h of the SM in the PSP since we are our
 ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
 ; shell.
-    mov rsi, qword [pPsdaTbl]   ;Get the PSDA table entry of SM
+    mov rsi, qword [pPtdaTbl]   ;Get the PSDA table entry of SM
     lea rdx, i22hShell
     mov qword [r8 + psp.oldInt22h], rdx
-    mov qword [rsi + psda.pInt22h], rdx
+    mov qword [rsi + ptda.pInt22h], rdx
     lea rdx, i23hHdlr
     mov qword [r8 + psp.oldInt23h], rdx
-    mov qword [rsi + psda.pInt23h], rdx
+    mov qword [rsi + ptda.pInt23h], rdx
     lea rdx, i24hHdlr
     mov qword [r8 + psp.oldInt24h], rdx
-    mov qword [rsi + psda.pInt24h], rdx
+    mov qword [rsi + ptda.pInt24h], rdx
+;Now we gotta setup RIP, RSP, flags and regs for the Session Manager
+    lea rdx, sm$shlTOS
+    mov qword [rsi + ptda.qRSP], rdx
+    lea rdx, shellMain  ;We enter at shellMain (interrupts on, and rsp ok)
+    mov qword [rsi + ptda.sRegsTbl + 15*8], rdx ;Set RIP
+    mov qword [rsi + ptda.sRegsTbl + 7*8], r9  ;Store PSP ptr @ r9 on regstack!
+    mov qword [rsi + ptda.sRegsTbl + 8*8], r8  ;Store PSP ptr @ r8 on regstack!
+    mov qword [rsi + ptda.sRegsTbl], 0202h     ;Store default flags on regstack!
+    jmp short i2ahJmp   ;Skip the timer stuff
+;Now setup the timer infrastructure for the timer interrupt.
+;Start by replacing the old timer interrupt with our better one.
+    cli         ;Start by ensuring interrupts are off!
+    mov eax, 3500h | timerInt  ;Get ptr to timer interrupt in rbx
+    int 21h
+    mov qword [pOldTimer], rbx
+    lea rdx, timerIrq ;Get the pointer to the new handler
+    mov eax, 2500h | timerInt  ;Set ptr for timer interrupt
+    int 21h
 
+;Now we set the timer to trigger and interrupt every ms.
+    mov al, 36h     ;Channel 0, same settings as BIOS
+    out PITcmd, al
+ 
+    mov eax, 1193   ;Divisor to get frequency of 1000.15Hz
+    out PIT0, al    ;Set low byte of PIT reload value
+    mov al, ah      ;ax = high 8 bits of reload value
+    out PIT0, al    
+i2ahJmp:
 ;Now setup the Int 2Ah infrastructure.
     lea rdx, i2AhDisp
     mov eax, 252Ah

@@ -4,16 +4,21 @@ SM_SESSION  equ 0       ;Session number for Session Manager
 
 ;Critical Lock
 struc critLock
-    .dCount dd ?    ;When this is zero, the lock is free
+    .dCount     dd ?    ;When this is zero, the lock is free
+    .pOwnerPdta dq ?    ;Ptr to the owner of the lock!
 endstruc
 
 
-struc psda  ;Per-Session Data Area
-    .pInt22h    dq ?    ;Int 22h handler on session switch
-    .pInt23h    dq ?    ;Int 23h handler on session switch
-    .pInt24h    dq ?    ;Int 24h handler on session switch
-    .pInt2Eh    dq ?    ;Int 2Eh handler on session switch (for master CMD)
-    .qRSP       dq ?    ;RSP on session switch
+struc ptda  ;Per-Task Data Area
+    .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
+    .wFlags     dw ?    ;Task flags
+    .dSleepLen  dd ?    ;Sleep length in ticks
+
+    .pInt22h    dq ?    ;Int 22h handler on task switch
+    .pInt23h    dq ?    ;Int 23h handler on task switch
+    .pInt24h    dq ?    ;Int 24h handler on task switch
+    .pInt2Eh    dq ?    ;Int 2Eh handler on task switch (for master CMD)
+    .qRSP       dq ?    ;RSP on task switch
     .sRegsTbl   dq 16 dup (?)   ;Register storage location
     .boS:
 ;    alignb 16
@@ -29,4 +34,18 @@ struc mScrCap   ;Communication packet with MCON
     .bScrNum    db ?    ;Number of screens supported by driver
     .qHlpPtr    dq ?    ;Pointer to the mCon help routine
 endstruc
+
 magicCode equ 7100h ;Scancode/ASCII code of ALT+F10
+
+
+;BIOS Equates go here
+EOI         equ 20h
+pic1cmd     equ 20h
+
+PITbase         equ 40h
+PIT0            equ PITbase
+PIT1            equ PITbase + 1
+PIT2            equ PITbase + 2
+PITcmd          equ PITbase + 3
+
+timerInt        equ 0F0h    ;Change if we change this in BIOS!!
