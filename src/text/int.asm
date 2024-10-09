@@ -32,6 +32,7 @@ timerIrq:
 ;Int 2Ah Dispatcher
 ;------------------------------------------------------------
 i2AhDisp:
+;Enter with interrupts off! This is to prevent race conditions on waits!
     cli ;Disable interrupts
     test ah, ah
     jz status
@@ -40,7 +41,7 @@ i2AhDisp:
     cmp ah, 80h
     je enterCriticalSection
     cmp ah, 81h
-    je endCriticalSection
+    je leaveCriticalSection
     cmp ah, 82h
     je deleteCriticalSection
     cmp ah, 84h
@@ -76,14 +77,15 @@ enterCriticalSection:    ;AH=80h
 ; ioReqPkt.strtsc of the packet.
     push rax
     push rdi
-    lea rax, dosLock
-    lea rdi, drvLock
-    cmp al, 1
-    cmove rdi, rax  ;Move the DOS lock ptr into rdi, else keep drvLock
-    je .lockMain    ;If a DOS critical section, go straight to the lock code
-    cmp al, 2       ;Is this a driver critical section?
-    je .drvCrit     ;If so, go to the driver special handling code.
-    jmp short .exit       ;Else, just exit!
+    test al, al
+    jz .exit
+    cmp ax, 2
+    ja .exit
+    lea rax, drvLock
+    lea rdi, dosLock
+    cmove rdi, rax  ;Move the drvlock into rdi if al = 2
+    je .drvCrit     ;And go to the driver special handling code.
+;Else, we are a DOS critical section, go straight to the lock code
 .lockMain:
 ;Entered with rdi -> Lock to check
     mov rax, qword [pCurTask]   ;Get the ptr to the current task
@@ -94,7 +96,7 @@ enterCriticalSection:    ;AH=80h
 .noGive:
     cmp qword [rdi + critLock.pOwnerPdta], rax
     je .incCount    ;If we own the lock, increment the count!
-    call taskSwitch
+    call taskSwitch ;Else, put the calling task on for one cycle.
     jmp short .lockMain     ;Try obtain the lock again!
 .incCount:
     inc dword [rdi + critLock.dCount]   ;Increment the entry count!
@@ -132,52 +134,51 @@ enterCriticalSection:    ;AH=80h
     mov dword [rbx + ioReqPkt.strtsc], eax
     jmp short .exit
 
-endCriticalSection:    ;AH=81h
-;Simply derements the appropriate lock count towards zero. 
-; If it is zero, don't decrement!
+leaveCriticalSection:    ;AH=81h
+;If the calling task owns the lock, decrements the lock
+    push rax
     push rdi
-    cmp al, 1
-    je .dos
+    test al, al ;If 0, exit
+    jz .exit
     cmp al, 2
-    jne .exit
-;Because Driver locks may not be given due to a multitasking driver
-; we must check if we have a driver lock call that the returning 
-; task owns the lock. Else, we simply ignore the lock call!
-    mov rdi, qword [pCurTask]
-    cmp qword [drvLock + critLock.pOwnerPdta], rdi
-    jne .exit
-;Else, this task owns the lock, proceed to decrement the count!
-    lea rdi, drvLock
-    jmp short .cmn
-.dos:
+    ja .exit    ;If above 2, exit
     lea rdi, dosLock
-.cmn:
-    cmp dword [rdi + critLock.dCount], 0
+    lea rax, drvLock
+    cmove rdi, rax  ;Swap rdi to drvLock if AL=2
+    cmp dword [rdi + critLock.dCount], 0    ;If lock is free, exit!
     je .exit
-    dec dword [rdi + critLock.dCount]
+    mov rax, qword [pCurTask]   ;Else, check we own the lock
+    cmp qword [rdi + critLock.pOwnerPdta], rax
+    jne .exit   ;If we don't own the lock, exit!
+    dec dword [rdi + critLock.dCount]   ;Else, decrement the lock!
 .exit:
     pop rdi
+    pop rax
     iretq
 
 deleteCriticalSection:      ;AH=82h
-;Once threading is introduced, where threads share a copy of the SDA, this
-; unit will operate as commented out below!
+;Will clear any critical sections OWNED by the task that is trying to 
+; enter the lock! Else, this function will do nothing.
+    push rax
+    push rdi
+    mov rax, qword [pCurTask]
+    lea rdi, dosLock
+    call .clearLock
+    lea rdi, drvLock
+    call .clearLock
+    pop rdi
+    pop rax
     iretq
-;    push rax
-;.lp:
-;    cmp qword [dosLock + critLock.dCount], 0    ;Is lock free? Proceed if so!
-;    je .exit
-;;If the task calling this function owns the lock, proceed.
-;;Else, put the task to sleep!
-;    mov rax, qword [pCurTask]
-;    cmp qword [dosLock + critLock.pOwnerPdta], rax
-;    je .exit
-;    call taskSwitch
-;    jmp short .lp
-;.exit:
-;    pop rax
-;    iretq
+.clearLock:
+    test dword [rdi + critLock.dCount], -1    ;Is this lock allocated?
+    retz    ;If this lock is free, exit! 
+    cmp qword [rdi + critLock.pOwnerPdta], rax  ;Else, do we own it?
+    retne   ;If not, exit!
+    mov dword [rdi + critLock.dCount], 0    ;Else, free it!
+    return
+
 
 releaseTimeslice:  ;AH=84h
 ;Intercepts the keyboard and releases the timeslice for the task that enters.
+    call taskSwitch
     iretq
