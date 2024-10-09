@@ -63,23 +63,10 @@ swapTaskData:
     call setIntVector 
     return
 
-swapConSession:
-;Signals the driver to swap the screen to new current tasks' screen!
-;Only occurs due to the SM providing the user with the option!
-    mov rdi, qword [pCurTask]
-    mov ebx, dword [rdi + ptda.hScrnNum]   ;Put the screen number in bl
-    mov eax, 1          ;Swap screen command!
-    call qword [pConIOCtl] ;Set the screen to the number in bl
-    return
 
-
-;--------------------------------------------
-;   User prompted task switching routines!
-;--------------------------------------------
-gotoShell:
-;This routine swaps sessions to the Session Manager Shell.
-;All registers are still preserved at this point except CF and ZF and CLI.
-    xchg qword [pCurTask], rbx  ;Get the ptr to the current task. Save rbx.
+taskSwitch:
+;Called always with interrupts turned off!
+    xchg qword [pCurTask], rbx  ;Get the ptr to the current session. Save rbx.
     mov qword [rbx + ptda.qRSP], rsp
     lea rsp, qword [rbx + ptda.boS] ;Point rsp to where to store regs
     xchg qword [pCurTask], rbx  ;Get back the value of rbx in rbx.
@@ -94,34 +81,23 @@ gotoShell:
     push r9
     push r10
     push r11
-    push r12
+    push r12 
     push r13
     push r14
     push r15
-    pushfq  ;Save flags with CLI set. CLI persists on...
+    pushfq
+    cld ;Ensure all writes occur in the right way.
+    lea rsp, sm$intTOS  ;Now go to the interrupt stack
 
-    lea rsp, sm$intTOS  ;Get the top of interrupt stack
-    cld     ;Ensure that rep writes are now the right way!
-    mov ecx, SM_SESSION
+;Here we sleep the current task and choose the next task.
+;If the task needed to be put to sleep for a period of time, then 
+; we have already set the sleep information in the ptda before coming
+; here.
+    call chooseNextTask
     call swapTaskData
-    call swapConSession
-    jmp shellEntry  ;Goto the shell entry routine
-    
-gotoSession:
-;Enter with ecx = new session number.
-;This starts working on the shell's stack. That is ok.
-    cli         ;Turn off interrupts again.
-    lea rsp, sm$intTOS  ;Get the top of interrupt stack
-    call swapTaskData
-    call swapConSession
+
     mov rbx, qword [pCurTask]
     lea rsp, qword [rbx + ptda.sRegsTbl + 8]    ;Skip reloading the flags here!
-;We load the flags to their original state after we have switched back to the 
-; application stack because we start applications with Interrupts on. Thus,
-; if an interrupt occurs during the popping of the register stack, this 
-; may corrupt data in the ptda. Thus we only load rflags once we are on the
-; application stack (which in the dangerous case, i.e. program init, is 
-; always large enough to handle an interrupt... unless its a very full .COM file)!
     pop r15
     pop r14
     pop r13
@@ -144,22 +120,8 @@ gotoSession:
     popfq   ;Pop flags back right at the end :)
     return
 
-;--------------------------------------------
-;   Timer prompted task switching routines!
-;--------------------------------------------
-taskSwitch:
-;Called always with interrupts turned off!
-;Goes through the array.
-    xchg qword [pCurTask], rbx  ;Get the ptr to the current session. Save rbx.
-    mov qword [rbx + ptda.qRSP], rsp
-    lea rsp, qword [rbx + ptda.boS] ;Point rsp to where to store regs
-    xchg qword [pCurTask], rbx  ;Get back the value of rbx in rbx.
-
-
-    xchg qword [pCurTask], rbx
-    mov rsp, qword [rbx + ptda.qRSP]
-    push qword [rbx + ptda.sRegsTbl]    ;Reload the flags!
-    xchg qword [pCurTask], rbx  ;Now swap things back  
-    popfq   ;Get them into the flags register!
+chooseNextTask:
+;Makes a choice of the next task. For now, its the next task,
+; unless the SM has been signalled through the keyboard. Furthermore, 
+; no task switch is enacted if we are in a critical section!
     return
-

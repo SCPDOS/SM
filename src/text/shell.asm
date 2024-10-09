@@ -175,3 +175,14 @@ i24hHdlr:
     mov al, 3   ;Always FAIL
 interruptExit:  ;Used to overwrite Int 2Eh
     iretq
+
+
+swapConSession:
+;Signals via DOS IOCTL to the multitasking console to enact the 
+; task switch!
+    return
+;    mov rdi, qword [pCurTask]
+;    mov ebx, dword [rdi + ptda.hScrnNum]   ;Put the screen number in bl
+;    mov eax, 1          ;Swap screen command!
+;    call qword [pConIOCtl] ;Set the screen to the number in bl
+;    return

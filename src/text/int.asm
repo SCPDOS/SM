@@ -3,6 +3,7 @@
 
 timerIrq:
 ;This is the replacement interrupt handler. 
+    cli
     push rax
     inc byte [bSliceCnt]     ;Increment the slice counter
     movzx eax, byte [bSliceSize]  ;Number of ms in one timeslice
