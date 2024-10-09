@@ -23,7 +23,10 @@ bSM_Req_Scr db ?    ;Scrren number to swap to
 ;Task management
 dCurTask    dd ?    ;Task number. Offset into the PTDA table.
 pCurTask    dq ?    ;Ptr to the current task PTDA
+
+;Supported Critical section locks
 dosLock     db critLock_size dup (?)    ;Critical section lock
+drvLock     db critLock_size dup (?)    ;Critical section lock
 
 ;Shell to launch on sessions. 
 ;Read from the CMD= string in the environment or passed by cmd line argument.

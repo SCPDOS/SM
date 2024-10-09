@@ -38,13 +38,13 @@ i2AhDisp:
     cmp ah, 03h
     je ioblock
     cmp ah, 80h
-    je critInc
+    je enterCriticalSection
     cmp ah, 81h
-    je critDec
+    je endCriticalSection
     cmp ah, 82h
-    je critReset
+    je deleteCriticalSection
     cmp ah, 84h
-    je keybIntercept
+    je releaseTimeslice
     iretq
 
 status:    ;AH=00h
@@ -58,7 +58,7 @@ ioblock:    ;AH=03h
 ;Input: rsi -> ASCIIZ string for device
     iretq
 
-critInc:    ;AH=80h
+enterCriticalSection:    ;AH=80h
 ;If this is called for a DOS critical section, attempts to give the 
 ; lock to the caller. If it cannot, the task is swapped until it gets its
 ; next quantum. If it can, the lock is allocated to it.
@@ -116,15 +116,34 @@ critInc:    ;AH=80h
     mov dword [rbx + ioReqPkt.strtsc], eax
     jmp short .exit
 
-critDec:    ;AH=81h
-;Simply derements the lock count towards zero. If it is zero, don't decrement!
-    cmp dword [dosLock + critLock.dCount], 0
+endCriticalSection:    ;AH=81h
+;Simply derements the appropriate lock count towards zero. 
+; If it is zero, don't decrement!
+    push rdi
+    cmp al, 1
+    je .dos
+    cmp al, 2
+    jne .exit
+;Because Driver locks may not be given due to a multitasking driver
+; we must check if we have a driver lock call that the returning 
+; task owns the lock. Else, we simply ignore the lock call!
+    mov rdi, qword [pCurTask]
+    cmp qword [drvLock + critLock.pOwnerPdta], rdi
+    jne .exit
+;Else, this task owns the lock, proceed to decrement the count!
+    lea rdi, drvLock
+    jmp short .cmn
+.dos:
+    lea rdi, dosLock
+.cmn:
+    cmp dword [rdi + critLock.dCount], 0
     je .exit
-    dec dword [dosLock + critLock.dCount]
+    dec dword [rdi + critLock.dCount]
 .exit:
+    pop rdi
     iretq
 
-critReset:      ;AH=82h
+deleteCriticalSection:      ;AH=82h
 ;Once threading is introduced, where threads share a copy of the SDA, this
 ; unit will operate as commented out below!
     iretq
@@ -143,6 +162,6 @@ critReset:      ;AH=82h
 ;    pop rax
 ;    iretq
 
-keybIntercept:  ;AH=84h
-;Do nothing as we don't need this endpoint for now!
+releaseTimeslice:  ;AH=84h
+;Intercepts the keyboard and releases the timeslice for the task that enters.
     iretq
