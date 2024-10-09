@@ -9,7 +9,7 @@ timerIrq:
     cmp byte [bSliceCnt], al
     jne .notaskSwitch
     pop rax
-    call ctxtSwap  ;Change process
+    call taskSwitch  ;Change process
     push rax
     mov byte [bSliceCnt], 0  ;Reset timer
 .notaskSwitch:
@@ -52,9 +52,11 @@ status:    ;AH=00h
     iretq
 
 ioblock:    ;AH=03h
-;Need to check that Int 33h if disk device is not active. Temp wont do that for now!
-;Else it is fine as we cannot swap in critical section and 
-; all default BIOS char devices are reentrant.
+;Since singletasking DevDrvIO is properly protected through critical sections
+; we only need to ensure that access to devices via BIOS calls, Int 25h 
+; and Int 26h have not been interrupted. This can be done by hooking, placing a
+; flag and incrementing the flag each time we enter and exit, then checking 
+; if that flag is high for that device. 
 ;Input: rsi -> ASCIIZ string for device
     iretq
 
@@ -73,29 +75,43 @@ enterCriticalSection:    ;AH=80h
 ; then the session number (screen number) handle is placed in the 
 ; ioReqPkt.strtsc of the packet.
     push rax
-    cmp al, 2
-    je .drvCrit
-;Else we fall to the lock checking
+    push rdi
+    lea rax, dosLock
+    lea rdi, drvLock
+    cmp al, 1
+    cmove rdi, rax  ;Move the DOS lock ptr into rdi, else keep drvLock
+    je .lockMain    ;If a DOS critical section, go straight to the lock code
+    cmp al, 2       ;Is this a driver critical section?
+    je .drvCrit     ;If so, go to the driver special handling code.
+    jmp short .exit       ;Else, just exit!
 .lockMain:
+;Entered with rdi -> Lock to check
     mov rax, qword [pCurTask]   ;Get the ptr to the current task
-    cmp dword [dosLock + critLock.dCount], 0    ;If the lock is free, take it!
+    cmp dword [rdi + critLock.dCount], 0    ;If the lock is free, take it!
     jne .noGive
-    mov qword [dosLock + critLock.pOwnerPdta], rax
-    jmp short .exitWith
+    mov qword [rdi + critLock.pOwnerPdta], rax  ;Set yourself as owner!
+    jmp short .incCount
 .noGive:
-    cmp qword [dosLock + critLock.pOwnerPdta], rax
-    je .exitWith    ;If we own the lock, increment the count!
-    call ctxtSwap
+    cmp qword [rdi + critLock.pOwnerPdta], rax
+    je .incCount    ;If we own the lock, increment the count!
+    call taskSwitch
     jmp short .lockMain     ;Try obtain the lock again!
-.exitWith:
-    inc dword [dosLock + critLock.dCount]
+.incCount:
+    inc dword [rdi + critLock.dCount]   ;Increment the entry count!
 .exit:
+    pop rdi
     pop rax
     iretq
 .drvCrit:
+;Entered with:
+;rdi -> Driver lock object
+;rsi -> Driver header
+;rbx -> Request packet
     movzx eax, word [rsi + drvHdr.attrib]
     test ax, devDrvMulti
     jz .lockMain   ;If not a multitasking driver, try grab the lock!
+;We reach the code below if we are entering an interruptable driver.
+;In this case, we do not wait on the lock and proceed as normal.
     test ax , devDrvChar
     jz .exit    ;Exit if not a char dev
     and ax, devDrvConIn | devDrvConOut
@@ -156,7 +172,7 @@ deleteCriticalSection:      ;AH=82h
 ;    mov rax, qword [pCurTask]
 ;    cmp qword [dosLock + critLock.pOwnerPdta], rax
 ;    je .exit
-;    call ctxtSwap
+;    call taskSwitch
 ;    jmp short .lp
 ;.exit:
 ;    pop rax

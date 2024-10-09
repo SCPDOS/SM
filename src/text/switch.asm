@@ -147,7 +147,7 @@ gotoSession:
 ;--------------------------------------------
 ;   Timer prompted task switching routines!
 ;--------------------------------------------
-ctxtSwap:
+taskSwitch:
 ;Called always with interrupts turned off!
 ;Goes through the array.
     xchg qword [pCurTask], rbx  ;Get the ptr to the current session. Save rbx.
