@@ -54,7 +54,7 @@ proceedBss:
     mov word [rdx + mScrCap.wVer], 0100h
     mov word [rdx + mScrCap.wLen], mScrCap_size
     mov word [rdx + mScrCap.wMagic], magicCode
-    lea rbx, DosSesHlp
+    lea rbx, devHlp
     mov qword [rdx + mScrCap.qHlpPtr], rbx
     mov eax, 440Ch
     xor ebx, ebx    ;CON handle (STDIN)!

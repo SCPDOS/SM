@@ -15,12 +15,15 @@ pCmdShell   dq ?    ;Pointer to the command shell to launch
 ;Dynamic variables below
 
 ;Screen Session management dataPtda
-bDefFlg     db ?    ;If set, defered session swap flag set! 
+bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
+
+bSM_Req     db ?    ;If set, the byte below indicates the requested screen
+bSM_Req_Scr db ?    ;Scrren number to swap to
 
 ;Task management
 dCurTask    dd ?    ;Task number. Offset into the PTDA table.
 pCurTask    dq ?    ;Ptr to the current task PTDA
-sesLock     db critLock_size dup (?)    ;Critical section lock
+dosLock     db critLock_size dup (?)    ;Critical section lock
 
 ;Shell to launch on sessions. 
 ;Read from the CMD= string in the environment or passed by cmd line argument.

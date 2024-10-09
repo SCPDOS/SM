@@ -42,7 +42,7 @@ i2AhDisp:
     cmp ah, 81h
     je critDec
     cmp ah, 82h
-    je critReset    ;We've been signalled to remove locks and is safe to do so!
+    je critReset
     cmp ah, 84h
     je keybIntercept
     iretq
@@ -59,19 +59,45 @@ ioblock:    ;AH=03h
     iretq
 
 critInc:    ;AH=80h
+;If this is called for a DOS critical section, attempts to give the 
+; lock to the caller. If it cannot, the task is swapped until it gets its
+; next quantum. If it can, the lock is allocated to it.
+;
+;SPECIAL CASE: If called for a Driver critical section, and the driver
+; is normal DOS driver, then it acts as in the case of the DOS critical
+; section. However, in the case of the driver having the undocumented
+; multitasking bit set, then the driver will not give the lock to the 
+; task as it is understood that the driver is capable of handling
+; concurrent threads within it. Furthermore, if the driver is the 
+; CON driver, and the request is a READ, WRITE or WRITE/VERIFY 
+; then the session number (screen number) handle is placed in the 
+; ioReqPkt.strtsc of the packet.
     push rax
-    inc dword [sesLock + critLock.dCount]
     cmp al, 2
     je .drvCrit
+;Else we fall to the lock checking
+.lockMain:
+    mov rax, qword [pCurTask]   ;Get the ptr to the current task
+    cmp dword [dosLock + critLock.dCount], 0    ;If the lock is free, take it!
+    jne .noGive
+    mov qword [dosLock + critLock.pOwnerPdta], rax
+    jmp short .exitWith
+.noGive:
+    cmp qword [dosLock + critLock.pOwnerPdta], rax
+    je .exitWith    ;If we own the lock, increment the count!
+    call ctxtSwap
+    jmp short .lockMain     ;Try obtain the lock again!
+.exitWith:
+    inc dword [dosLock + critLock.dCount]
 .exit:
     pop rax
     iretq
 .drvCrit:
     movzx eax, word [rsi + drvHdr.attrib]
+    test ax, devDrvMulti
+    jz .lockMain   ;If not a multitasking driver, try grab the lock!
     test ax , devDrvChar
     jz .exit    ;Exit if not a char dev
-    test ax, devDrvMulti
-    jz .exit    ;Exit if the driver is not declared as MDOS driver
     and ax, devDrvConIn | devDrvConOut
     jz .exit    ;If neither bit set, exit
     ;Here if this is either a MDOS CON In or CON Out device. 
@@ -91,27 +117,31 @@ critInc:    ;AH=80h
     jmp short .exit
 
 critDec:    ;AH=81h
-;If lock is zero, exit as we would not have been deferred here.
-;Else decrement the lock as it is safe to do so.
-;   If lock not zero after decrement, exit.
-;   Else
-;       If deferred flag zero, exit.
-;       Else handle deferred session swap.
-    cmp dword [sesLock + critLock.dCount], 0
-    jz .exit
-    dec dword [sesLock + critLock.dCount]
-    cmp dword [sesLock + critLock.dCount], 0
-    jne .exit
-    test byte [bDefFlg], -1 ;If we have a deferred call, process now!
-    jz .exit
-    mov byte [bDefFlg], 0   ;Clear the deferral flag and process call!
-    call gotoShell
+;Simply derements the lock count towards zero. If it is zero, don't decrement!
+    cmp dword [dosLock + critLock.dCount], 0
+    je .exit
+    dec dword [dosLock + critLock.dCount]
 .exit:
     iretq
 
 critReset:      ;AH=82h
-    mov dword [sesLock + critLock.dCount], 0    ;Reset the value here :)
+;Once threading is introduced, where threads share a copy of the SDA, this
+; unit will operate as commented out below!
     iretq
+;    push rax
+;.lp:
+;    cmp qword [dosLock + critLock.dCount], 0    ;Is lock free? Proceed if so!
+;    je .exit
+;;If the task calling this function owns the lock, proceed.
+;;Else, put the task to sleep!
+;    mov rax, qword [pCurTask]
+;    cmp qword [dosLock + critLock.pOwnerPdta], rax
+;    je .exit
+;    call ctxtSwap
+;    jmp short .lp
+;.exit:
+;    pop rax
+;    iretq
 
 keybIntercept:  ;AH=84h
 ;Do nothing as we don't need this endpoint for now!
