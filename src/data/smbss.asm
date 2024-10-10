@@ -1,6 +1,7 @@
 ;Uninitialised data goes here
 
 ;Write Once variables, ALL SET UP.
+pDosMgrPsp  dq ?    ;Pointer to the DOSMGR PSP
 pDosSda     dq ?    ;Pointer to the DOS SDA
 pPtdaTbl    dq ?    ;Pointer to the Per-Task data area table.
 dPtdaLen    dd ?    ;Length of each ptda

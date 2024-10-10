@@ -97,7 +97,7 @@ enterCriticalSection:    ;AH=80h
 .noGive:
     cmp qword [rdi + critLock.pOwnerPdta], rax
     je .incCount    ;If we own the lock, increment the count!
-    call taskSwitch ;Else, put the calling task on for one cycle.
+    call taskSwitch ;Else, put the calling task on ice for one cycle.
     jmp short .lockMain     ;Try obtain the lock again!
 .incCount:
     inc dword [rdi + critLock.dCount]   ;Increment the entry count!

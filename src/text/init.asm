@@ -21,6 +21,8 @@ proceedBss:
     mov ecx, bseg_len
     xor eax, eax
     rep stosb
+;Save the PSP pointer for the Session (DOS) Manager
+    mov qword [pDosMgrPsp], r8
 ;Check that STDIO is not redirected from the standard console device.
 ;This can be an AUX driver, the test for MCON compliance occurs below!
 ;If it is, exit complaining!
