@@ -19,7 +19,7 @@ pCmdShell   dq ?    ;Pointer to the command shell to launch
 bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
 
 bSM_Req     db ?    ;If set, the byte below indicates the requested screen
-bSM_Req_Scr db ?    ;Scrren number to swap to
+bSM_Req_Scr db ?    ;Screen number to swap to
 
 ;Task management
 dCurTask    dd ?    ;Task number. Offset into the PTDA table.

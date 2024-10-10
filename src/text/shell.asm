@@ -3,9 +3,8 @@
     EXTERN sm$shlTOS
 
 shellEntry:
-;This is the entry stub into the SM shell!
-    lea rsp, sm$shlTOS  ;Set now to internal shell stack! 
-    sti     ;Now reenable interrupts! We are safe to do so! 
+;Entered with interrupts on.
+    lea rsp, sm$shlTOS  ;Set/Reset internal shell stack! 
 ;And fall through to the main print loop
 shellMain:
 ;The shell main routine prints the number of sessions,
@@ -86,23 +85,31 @@ shellMain:
     sub cl, "0"
     cmp dword [dMaxSesIndx], ecx
     jb badChoice
-;
-; TMP TMP TMP TMP TMP TMP TMP TMP TMP
-;
-    jmp short $ - 2 
-;
-; TMP TMP TMP TMP TMP TMP TMP TMP TMP
-;
+swapScreen:
+;Enact the swap to the new screen here!
+
+    
+
+;Finish by signalling to DOSMGR that we are done!
+    mov eax, 8400h  ;Release Timeslice and then loop up again!
+    int 2Ah
+    jmp shellEntry  ;Next instruction is a restart!
 
 badChoice:
 ;Beep at the user and then reset the screen, show display!
     mov dl, 07h ;Beep at the user (Do I want to do that?)
     call putch
     jmp shellMain
-resetScreen:            ;Now reset the screen!
-    mov eax, 2          ;Driver Reset screen command!
-    call qword [pConIOCtl]
-    return 
+resetScreen:
+;Dirty Hack! Please just send the ANSI code and make the driver recognise
+; that one ANSI code... Or do a less dirty hack and do what COMMAND.COM does.
+
+;Select segment zero which resets current screen w/o affecting frozen state!
+    xor esi, esi    
+    mov eax, 440Ch
+    mov ecx, 0343h      ;Screen Control/"Restore Segment"
+    int 21h
+    return
 
 ;Shell handy routines
 getProcName:
@@ -182,13 +189,3 @@ i24hHdlr:
 interruptExit:  ;Used to overwrite Int 2Eh
     iretq
 
-
-swapConSession:
-;Signals via DOS IOCTL to the multitasking console to enact the 
-; task switch!
-    return
-;    mov rdi, qword [pCurTask]
-;    mov ebx, dword [rdi + ptda.hScrnNum]   ;Put the screen number in bl
-;    mov eax, 1          ;Swap screen command!
-;    call qword [pConIOCtl] ;Set the screen to the number in bl
-;    return

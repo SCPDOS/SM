@@ -43,18 +43,28 @@ consInputFilter:
 ;        ZF=ZE: char pair should NOT be added to the internal buffer
     cmp ax, magicCode   ;If the magic char, do not add to internal buffer
     retne
-    ;Here if the magic code was encounted. Suggest we swap to screen 0
+    ;Here if the magic code was encounted.
+    push rax
+    xor eax, eax    ;Magic code requests a swap to screen zero!
+    call swapSes
+    pop rax
+    return
+
+swapSes:
+;Entered with al = Suggested screen number. If bigger than maxsesindex, error!
+    push rax
+    movzx eax, al
+    cmp dword [dMaxSesIndx], eax
+    pop rax
+    retb    ;Exit with Carry Set!
     pushfq
     cli 
     test byte [bSM_Req], -1 ;If its set, dont set again!
     jnz .exit
     mov byte [bSM_Req], -1  ;Set the bit
-    mov byte [bSM_Req_Scr], 0   ;Suggest swapping to screen zero!
+    mov byte [bSM_Req_Scr], al   ;Suggest swapping to screen zero!
 .exit:
     popfq
-    return
-
-swapSes:
     return
 
 procBlock:

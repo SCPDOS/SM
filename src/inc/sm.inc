@@ -33,10 +33,9 @@ endstruc
 
 struc mScrCap   ;Communication packet with MCON
     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)
-    .wLen       dw ?    ;Length of structure (15 bytes)
-    .wMagic     dw ?    ;Magic key combo (scancode/ASCII)
+    .wLen       dw ?    ;Length of structure (13 bytes)
     .bScrNum    db ?    ;Number of screens supported by driver
-    .qHlpPtr    dq ?    ;Pointer to the mCon help routine
+    .pDevHlp    dq ?    ;Pointer to the devHlp help routine
 endstruc
 
 magicCode equ 7100h ;Scancode/ASCII code of ALT+F10

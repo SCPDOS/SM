@@ -55,19 +55,16 @@ proceedBss:
     mov rdx, rsp    ;Allocated structure on the stack
     mov word [rdx + mScrCap.wVer], 0100h
     mov word [rdx + mScrCap.wLen], mScrCap_size
-    mov word [rdx + mScrCap.wMagic], magicCode
     lea rbx, devHlp
-    mov qword [rdx + mScrCap.qHlpPtr], rbx
+    mov qword [rdx + mScrCap.pDevHlp], rbx
     mov eax, 440Ch
     xor ebx, ebx    ;CON handle (STDIN)!
-    mov ecx, 0310h  ;CON + Reports capacities!
+    mov ecx, 0340h  ;CON + Reports capacities!
     int 21h
     jnc mConOk
     lea rdx, noConStr
     jmp exitBad
 mConOk:
-    mov rbx, qword [rdx + mScrCap.qHlpPtr]
-    mov qword [pConIOCtl], rbx ;Store the help pointer
     movzx ebx, byte [rdx + mScrCap.bScrNum]
     mov eax, 8      ;Maximum supported, 8 screens
     cmp ebx, eax
@@ -102,8 +99,9 @@ screensOk:
     jnc spaceOk
     lea rdx, noMemStr
 exitMcon:
-    mov eax, 3  ;Signal to uninstall ourselves from MCON
-    call qword [pConIOCtl] ;Deinstall our help pointer from the MCON 
+    mov eax, 440Ch  ;Generic IOCTL
+    mov ecx, 0348h  ;Deinstall mtask capabilities from CON
+    int 21h
     jmp exitBad
 spaceOk:
     push rax        ;Save the pointer to the allocated block!
@@ -302,6 +300,7 @@ i2ahJmp:
     mov rdi, qword [rbx - 32]
     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
 ;Now we are ready to jump!
+
 ;
 ; TMP TMP TMP TMP TMP TMP TMP TMP
 ;
@@ -314,3 +313,8 @@ errorStr db "Session Manager not ready yet. System halted!"
 ;
 ; TMP TMP TMP TMP TMP TMP TMP TMP
 ;
+
+;Actual exit code below
+    sti         ;Ensure we return interrupts on!
+    mov ecx, 1  ;Start COMMAND.COM on screen 1
+    jmp swapScreen

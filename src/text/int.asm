@@ -63,6 +63,16 @@ ioblock:    ;AH=03h
     iretq
 
 enterCriticalSection:    ;AH=80h
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+; CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT CAVEAT 
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;In what follows, DOS and Driver critical section refers to 
+; interruptable and uninterruptable critical section respectively.
+;Uninterruptable critical sections behave specially in that they assume
+; that they are always being called before a driver request UNLESS
+; either RBX or RSI are null pointers, in which case the special driver
+; handling is skipped.
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;If this is called for a DOS critical section, attempts to give the 
 ; lock to the caller. If it cannot, the task is swapped until it gets its
 ; next quantum. If it can, the lock is allocated to it.
@@ -110,6 +120,12 @@ enterCriticalSection:    ;AH=80h
 ;rdi -> Driver lock object
 ;rsi -> Driver header
 ;rbx -> Request packet
+;If either rsi or rbx are NULL then we assume this is a non-driver 
+; request for an uninterruptable critical section.
+    test rsi, rsi
+    jz .lockMain
+    test rbx, rbx
+    jz .lockMain
     movzx eax, word [rsi + drvHdr.attrib]
     test ax, devDrvMulti
     jz .lockMain   ;If not a multitasking driver, try grab the lock!
