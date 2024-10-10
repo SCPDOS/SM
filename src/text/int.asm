@@ -119,9 +119,12 @@ enterCriticalSection:    ;AH=80h
     jz .exit    ;Exit if not a char dev
     and ax, devDrvConIn | devDrvConOut
     jz .exit    ;If neither bit set, exit
-    ;Here if this is either a MDOS CON In or CON Out device. 
-    ;If request is read/write, place current task's screen number 
-    ; in the ioReqPkt.strtsc field (we zxtend the byte to qword).
+;Here if this is either a MDOS CON In or CON Out device. 
+;If request is read/write, place current task's screen number 
+; in the ioReqPkt.strtsc field (we zxtend the byte to qword).
+;This is a kludge as DOS is not multitasking so of course will not 
+; do this for us :) It is the only reasonable way of communicating 
+; the screen number of the task making the request to the driver.
     movzx eax, byte [rbx + drvReqHdr.cmdcde]
     cmp eax, drvREAD
     je .ioReq

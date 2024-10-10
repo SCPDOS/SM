@@ -64,6 +64,14 @@ chooseNextTask:
 ;Makes a choice of the next task. For now, its the next task,
 ; unless the SM has been signalled through the keyboard. Furthermore, 
 ; no task switch is enacted if we are in a critical section!
+
+;NOTE!! A task that owns a driver critical section (02h) MUST NOT be 
+; interrupted. This is because the driver expects to have full control
+; over the hardware and will not be happy if someone else tries to 
+; do something whilst waiting for a new timeslice. A driver 
+; can communicate that it is interruptable by setting the new multitasking
+; bit in the header. Then Int 2Ah will no allocate the lock to it.
+;A task that owns a DOS critical section (01h) can be interrupted.
     mov ecx, dword [dCurTask]   ;TMPTMP: Keep current task!
     return
 

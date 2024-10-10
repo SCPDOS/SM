@@ -86,8 +86,14 @@ shellMain:
     sub cl, "0"
     cmp dword [dMaxSesIndx], ecx
     jb badChoice
-;Jump with with cl containing the new (valid) session number
-    jmp gotoSession 
+;
+; TMP TMP TMP TMP TMP TMP TMP TMP TMP
+;
+    jmp short $ - 2 
+;
+; TMP TMP TMP TMP TMP TMP TMP TMP TMP
+;
+
 badChoice:
 ;Beep at the user and then reset the screen, show display!
     mov dl, 07h ;Beep at the user (Do I want to do that?)

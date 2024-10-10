@@ -302,5 +302,15 @@ i2ahJmp:
     mov rdi, qword [rbx - 32]
     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
 ;Now we are ready to jump!
-    mov ecx, 1 ;Start with task 1
-    jmp gotoSession
+;
+; TMP TMP TMP TMP TMP TMP TMP TMP
+;
+    lea rdx, errorStr
+    mov eax, 0900h
+    int 21h
+lp:
+    jmp short lp
+errorStr db "Session Manager not ready yet. System halted!"
+;
+; TMP TMP TMP TMP TMP TMP TMP TMP
+;
