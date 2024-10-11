@@ -8,11 +8,6 @@ awakenNewTask:
 ;Input: ecx = Task number (handle) to switch to.
 ;Output: ecx set as current task.
 
-;Start by setting the new task as the current active task
-    mov dword [dCurTask], ecx  ;Store the task number 
-    call getPtdaPtr ;Get ptr in rdi to the current PTDA table
-    mov rbx, rdi
-    mov qword [pCurTask], rbx           ;Setup internal data properly!
 
 ;Set the SDA to the new tasks' SDA. 
     lea rsi, qword [rbx + ptda.sdaCopy] ;Point rdi to the sda space
@@ -72,7 +67,33 @@ chooseNextTask:
 ; can communicate that it is interruptable by setting the new multitasking
 ; bit in the header. Then Int 2Ah will no allocate the lock to it.
 ;A task that owns a DOS critical section (01h) can be interrupted.
-    mov ecx, dword [dCurTask]   ;TMPTMP: Keep current task!
+
+;Start by checking that we don't own the uninterruptable lock. If
+; we do, exit! We should never be in a situation where it is allocated 
+; and we don't own it here.
+    mov rdi, qword [pCurTask]
+    mov eax, dword [drvLock + critLock.dCount]
+    test eax, eax
+    jz .noDrvLock   ;Not owned, proceed!
+    cmp rdi, qword [drvLock + critLock.pOwnerPdta]
+    rete    ;Return if they are equal!
+    lea rdx, badLockStr
+    jmp fatalHalt
+.noDrvLock:
+    cmp 
+    return   ;TMPTMP: Keep current task!
+;Now we know we don't own the uninterruptable lock, we choose a task
+; to swap to. Check if the Screen Manager has told us what to swap to.
+; If it hasn't, we check if the task screen is the same as the current 
+; screen. If it isnt, swap to the task on that screen. Else, swap
+; to the next task that isn't asleep. If all tasks are asleep then 
+; pick the next task and wait on it.
+
+;End by setting the new task and signalling procrun on this
+    mov dword [dCurTask], ecx  ;Store the task number 
+    call getPtdaPtr ;Get ptr in rdi to the current PTDA table
+    mov rbx, rdi
+    mov qword [pCurTask], rbx           ;Setup internal data properly!
     return
 
 
@@ -105,7 +126,7 @@ taskSwitch:
     lea rsp, sm$intTOS  ;Now go to the interrupt stack
 
     call sleepCurrentTask
-    call chooseNextTask     ;Returns in ecx the hdl to the new task
+    call chooseNextTask     ;Sets the task variables for the new task
     call awakenNewTask
 
     mov rbx, qword [pCurTask]
@@ -130,4 +151,27 @@ taskSwitch:
     push qword [rbx + ptda.sRegsTbl]    ;Reload the flags once we have switched stacks!
     xchg qword [pCurTask], rbx  ;Now swap things back  
     popfq   ;Pop flags back right at the end :)
+    return
+
+fatalHalt:
+;This is the handler if a fatal error occurs where we need to halt the 
+; machine. We call DOS as we don't need to preserve anything since we 
+; freeze the machine. 
+;Input: rdx -> String to print.
+    push rdx
+    lea rdx, fatalStr
+    call .outStr
+    pop rdx
+    call .outStr
+    lea rdx, sysHltStr
+    call .outStr
+;
+;Here provide a regdump of the system registers (and possibly stack?). 
+;
+    cli
+.deadLp:
+    jmp short .deadLp
+.outStr:
+    mov eax, 0900h
+    int 21h
     return

@@ -19,6 +19,11 @@ noStdoutStr db "Error 0009: STDOUT Redirected from CON device",CR,LF,"$"
 
 sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
 
+;Here we put the DOSMGR fatal error strings
+fatalStr    db CR,LF, "Fatal Error: $"
+badLockStr  db "Uninterruptable Critical Lock interrupted$"
+sysHltStr   db CR,LF,"System Halted$"
+
 ;Shell Strings
 newlineStr  db CR,LF,"$"
 uline       db 80 dup ("-"),"$"

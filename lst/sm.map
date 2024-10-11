@@ -29,31 +29,31 @@ LOAD ./bin/sm.obj
 .text           0x0000000000000000        0x0
  .text          0x0000000000000000        0x0 ./bin/sm.obj
 
-sm$text         0x0000000000000000      0x970
+sm$text         0x0000000000000000      0x9b0
  ./bin/sm.obj(cseg)
- cseg           0x0000000000000000      0x963 ./bin/sm.obj
+ cseg           0x0000000000000000      0x9af ./bin/sm.obj
                 0x0000000000000000                ep
 
-sm$data         0x0000000000000970      0x380
+sm$data         0x00000000000009b0      0x3c0
  ./bin/sm.obj(dseg)
- dseg           0x0000000000000970      0x372 ./bin/sm.obj
+ dseg           0x00000000000009b0      0x3bc ./bin/sm.obj
 
-.reloc          0x0000000000000cf0        0x0
- .reloc         0x0000000000000cf0        0x0 dll stuff
+.reloc          0x0000000000000d70        0x0
+ .reloc         0x0000000000000d70        0x0 dll stuff
 
-sm$bss          0x0000000000000cf0       0x75
-                0x0000000000000cf0                bseg_start = .
+sm$bss          0x0000000000000d70       0x76
+                0x0000000000000d70                bseg_start = .
  ./bin/sm.obj(bseg)
- bseg           0x0000000000000cf0       0x75 ./bin/sm.obj
-                0x0000000000000d65                bseg_end = .
-                0x0000000000000d65                bseg_len = (bseg_end - bseg_start)
+ bseg           0x0000000000000d70       0x76 ./bin/sm.obj
+                0x0000000000000de6                bseg_end = .
+                0x0000000000000de6                bseg_len = (bseg_end - bseg_start)
 
-sm$stack        0x0000000000000cf0     0x1100
+sm$stack        0x0000000000000d70     0x1100
  ./bin/sm.obj(sseg$int)
- sseg$int       0x0000000000000cf0      0x100 ./bin/sm.obj
-                0x0000000000000df0                sm$intTOS = .
+ sseg$int       0x0000000000000d70      0x100 ./bin/sm.obj
+                0x0000000000000e70                sm$intTOS = .
  ./bin/sm.obj(sseg$shl)
- sseg$shl       0x0000000000000df0     0x1000 ./bin/sm.obj
-                0x0000000000001df0                sm$shlTOS = .
+ sseg$shl       0x0000000000000e70     0x1000 ./bin/sm.obj
+                0x0000000000001e70                sm$shlTOS = .
 OUTPUT(./bin/sm.exe pei-x86-64)
 LOAD dll stuff

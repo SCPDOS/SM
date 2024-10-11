@@ -13,7 +13,9 @@ struc ptda  ;Per-Task Data Area
 ;Task metadata
     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
     .wFlags     dw ?    ;Task flags
-    .dSleepLen  dd ?    ;Sleep length in ticks
+;Sleep and Blocking States
+    .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
+    .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
     .qEventId   dq ?    ;ID to check for block/run calls.
 ;Interrupt handles for replacing on task swap
     .pInt22h    dq ?    ;Int 22h handler on task switch
@@ -30,6 +32,9 @@ struc ptda  ;Per-Task Data Area
     .sdaCopy:           ;Copy of the DOS sda for this session when not active
 endstruc
 
+ptda_sleep      equ 1   ;Timed sleep
+ptda_block      equ 2   ;Blocked thread
+ptda_interrupt  equ 4   ;Interruptable sleep
 
 struc mScrCap   ;Communication packet with MCON
     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)
