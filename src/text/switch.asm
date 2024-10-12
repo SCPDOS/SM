@@ -80,7 +80,6 @@ chooseNextTask:
     lea rdx, badLockStr
     jmp fatalHalt
 .noDrvLock:
-    cmp 
     return   ;TMPTMP: Keep current task!
 ;Now we know we don't own the uninterruptable lock, we choose a task
 ; to swap to. Check if the Screen Manager has told us what to swap to.
@@ -103,8 +102,8 @@ taskSwitch:
 ; we have already set the sleep information in the ptda before coming
 ; here.
     xchg qword [pCurTask], rbx  ;Get the ptr to the current session. Save rbx.
-    mov qword [rbx + ptda.qRSP], rsp
-    lea rsp, qword [rbx + ptda.boS] ;Point rsp to where to store regs
+    mov qword [rbx + ptda.sTcb + tcb.qRSP], rsp
+    lea rsp, qword [rbx + ptda.sTcb + tcb.boS] ;Point rsp to where to store regs
     xchg qword [pCurTask], rbx  ;Get back the value of rbx in rbx.
     push rax
     push rbx
@@ -130,7 +129,8 @@ taskSwitch:
     call awakenNewTask
 
     mov rbx, qword [pCurTask]
-    lea rsp, qword [rbx + ptda.sRegsTbl + 8]    ;Skip reloading the flags here!
+;Skip reloading the flags here!
+    lea rsp, qword [rbx + ptda.sTcb + tcb.sRegsTbl + 8]
     pop r15
     pop r14
     pop r13
@@ -147,8 +147,9 @@ taskSwitch:
     pop rbx
     pop rax
     xchg qword [pCurTask], rbx
-    mov rsp, qword [rbx + ptda.qRSP]
-    push qword [rbx + ptda.sRegsTbl]    ;Reload the flags once we have switched stacks!
+    mov rsp, qword [rbx + ptda.sTcb + tcb.qRSP]
+;Reload the flags once we have switched stacks!
+    push qword [rbx + ptda.sTcb + tcb.sRegsTbl]
     xchg qword [pCurTask], rbx  ;Now swap things back  
     popfq   ;Pop flags back right at the end :)
     return

@@ -212,15 +212,15 @@ loadLp:
     mov qword [rdi + ptda.pInt2Eh], rbx
 ;   breakpoint
     mov rbx, qword [rbp + loadProg.initRSP]
-    mov qword [rdi + ptda.qRSP], rbx ;Store the Stack value!
+    mov qword [rdi + ptda.sTcb + tcb.qRSP], rbx ;Store the Stack value!
     mov rax, qword [rbp + loadProg.initRIP] 
     xchg rax, qword [rbx]   ;Swap the RIP value with the FCB words on the stack!
-    mov qword [rdi + ptda.sRegsTbl + 15*8], rax ;Store rax @ rax on regstack!
+    mov qword [rdi + ptda.sTcb + tcb.sRegsTbl + 15*8], rax ;rax on regstack!
     mov eax, 5100h  ;Get Current PSP in rbx
     int 21h
-    mov qword [rdi + ptda.sRegsTbl + 7*8], rbx  ;Store PSP ptr @ r9 on regstack!
-    mov qword [rdi + ptda.sRegsTbl + 8*8], rbx  ;Store PSP ptr @ r8 on regstack!
-    mov qword [rdi + ptda.sRegsTbl], 0202h      ;Store default flags on regstack!
+    mov qword [rdi + ptda.sTcb + tcb.sRegsTbl + 7*8], rbx  ;PSP ptr @ r9
+    mov qword [rdi + ptda.sTcb + tcb.sRegsTbl + 8*8], rbx  ;PSP ptr @ r8
+    mov qword [rdi + ptda.sTcb + tcb.sRegsTbl], 0202h      ;Flags!
 ;Make sure to save the screen number assigned to this task!
     mov dword [rdi + ptda.hScrnNum], ecx    ;Save the screen number of task!
 ;Now copy the SDA into the ptda SDA
@@ -245,7 +245,7 @@ loadLp:
 ;Setup the default int 22h and int 23h of the SM in the PSP since we are our
 ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
 ; shell.
-    mov rsi, qword [pPtdaTbl]   ;Get the PSDA table entry of SM
+    mov rsi, qword [pPtdaTbl]   ;Get the PTDA table entry of SM
     lea rdx, i22hShell
     mov qword [r8 + psp.oldInt22h], rdx
     mov qword [rsi + ptda.pInt22h], rdx
@@ -257,12 +257,38 @@ loadLp:
     mov qword [rsi + ptda.pInt24h], rdx
 ;Now we gotta setup RIP, RSP, flags and regs for the Session Manager
     lea rdx, sm$shlTOS
-    mov qword [rsi + ptda.qRSP], rdx
+    mov qword [rsi + ptda.sTcb + tcb.qRSP], rdx
     lea rdx, shellMain  ;We enter at shellMain (interrupts on, and rsp ok)
-    mov qword [rsi + ptda.sRegsTbl + 15*8], rdx ;Set RIP
-    mov qword [rsi + ptda.sRegsTbl + 7*8], r9  ;Store PSP ptr @ r9 on regstack!
-    mov qword [rsi + ptda.sRegsTbl + 8*8], r8  ;Store PSP ptr @ r8 on regstack!
-    mov qword [rsi + ptda.sRegsTbl], 0202h     ;Store default flags on regstack!
+    mov qword [rsi + ptda.sTcb + tcb.sRegsTbl + 15*8], rdx ;Set RIP
+    mov qword [rsi + ptda.sTcb + tcb.sRegsTbl + 7*8], r9  ;PSP ptr @ r9
+    mov qword [rsi + ptda.sTcb + tcb.sRegsTbl + 8*8], r8  ;PSP ptr @ r8
+    mov qword [rsi + ptda.sTcb + tcb.sRegsTbl], 0202h     ;flags
+
+;Now put every task into middle priority list (schedule 15)!
+    mov al, 15
+    call getSchedHeadPtr    ;Get the schedhead ptr in rsi
+    call getScheduleLock    ;Lock the schedule pointed to by rsi
+;Now add all the tasks's we've just created to this list
+    xor ecx, ecx
+    call getPtdaPtr     ;Get ptda pointer in rdi for task 0
+    call getThreadPtr   ;Get a pointer to the first thread block of rdi in rbp
+    inc dword [rsi + schedHead.dNumEntry]
+    mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
+    mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
+schedLp:
+    inc ecx
+    cmp ecx, dword [dMaxSesIndx]
+    ja schedExit
+    call getPtdaPtr     ;Get ptda pointer in rdi for task ecx
+    call getThreadPtr   ;Get ptr to the first tcb of rdi in rbp
+    mov rdi, qword [rsi + schedHead.pSchedTail] ;Get the last entry in the sched
+    mov qword [rdi + tcb.pNextSTcb], rbp    ;rbp comes after this 
+    mov qword [rsi + schedHead.pSchedTail], rbp ;This tcb is the new last tcb
+    inc dword [rsi + schedHead.dNumEntry]       ;Added a new element to schedule
+    jmp short schedLp
+schedExit:
+    call releaseScheduleLock
+
     jmp short i2ahJmp   ;Skip the timer stuff
 ;Now setup the timer infrastructure for the timer interrupt.
 ;Start by replacing the old timer interrupt with our better one.

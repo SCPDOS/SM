@@ -1,6 +1,7 @@
 ;Structures and equates for DOSMGR
 
 SM_SESSION  equ 0       ;Session number for Session Manager
+MAX_TASK    equ 32      ;Maximum of 32 tasks
 
 ;Critical Lock
 struc critLock
@@ -8,7 +9,7 @@ struc critLock
     .pOwnerPdta dq ?    ;Ptr to the owner of the lock!
 endstruc
 
-;Systen Object Table header
+;System Object Table header
 struc soth  
     .pNextSoth  dq ?    ;Pointer to the next soth
     .dSize      dd ?    ;Size of the soth
@@ -22,18 +23,19 @@ endstruc
 ; simultaneously modifying the list in a multiprocessor system.
 struc schedHead
     .bLock      db ?    ;Set if this schedule is locked (no writes)
-    .qFirstTsb  dq ?    ;Points to the head of the schedule
+    .dNumEntry  dd ?    ;Number of entries in this schedule
+    .pSchedHead dq ?    ;Ptr to next tcb in schedule to be executed
+    .pSchedTail dq ?    ;Ptr to last tcb in schedule
 endstruc
 
-;Thread Scheduling block, basic unit of the scheduler.
-struc tsb 
-    .pNextTsb   dq ?    ;Change this to handle. 
-    .wThrdStat  dw ?    ;State of the thread in the schedule
-endstruc
-
-;Thread Control block, keeps thread state 
+;Thread Control block, keeps thread state, including the 
+; entries modified by the scheduler!
 struc tcb 
-    .sTsb       db tsb_size dup (?) ;Thread's schedule block
+;The following variable IS ONLY touched by the scheduler.
+;It is meaningless w/o a schedule lock!
+    .pNextSTcb  dq ?   ;Points to the next tcb in the schedule
+;Here begins the actual TCB.
+    .pNextPTcb  dq ?    ;Ptr to the next tcb owned by the process
     .wFlags     dw ?    ;Flags for the Thread Control Block
 ;Sleep and Blocking States
     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
@@ -53,9 +55,12 @@ struc ptda
 ;Process metadata
     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
     .hPtda      dd ?    ;Hdl to this ptda, currently just an offset
+    .hParPtda   dd ?    ;Handle to the parent ptda
+    .dCsid      dd ?    ;CSID of this task chain (id of root program)
     .wFlags     dw ?    ;Task flags
-;Thread conrol block, will be replaced to a ptr to the main thread tcb.
-    alignb 16h
+;Thread control block, will eventually be replaced to a ptr to the 
+; main thread tcb.
+    alignb 10h
     .sTcb       db tcb_size dup (?) ;Thread's schedule block
 ;Interrupt handles for replacing on task swap
     .pInt22h    dq ?    ;Int 22h handler on task switch

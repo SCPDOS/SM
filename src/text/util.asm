@@ -37,7 +37,7 @@ setIntVector:
 
 getPtdaPtr:
 ;Input: ecx = Number of the ptda to get the pointer of!
-;Output: rdi -> PSDA requested
+;Output: rdi -> PTDA requested
     mov rdi, qword [pPtdaTbl]
     test ecx, ecx   ;Pick off the case where session number is 0.
     retz
@@ -48,4 +48,47 @@ getPtdaPtr:
     add rdi, rax
     pop rcx
     pop rax
+    return
+
+getThreadPtr:
+;Input: rdi -> PTDA to get the thread pointer to
+;Output: rbp -> Primary (foreground) tcb of the process
+    lea rbp, qword [rdi + ptda.sTcb]
+    return
+
+getSchedHeadPtr:
+;Gets a pointer to your desired schedule.
+;Input: al = Number of the schedule you desire (0-31)
+    push rax
+    push rbx
+    mov ebx, 31
+    sub ebx, eax    ;Get the reverse order schedule number in ebx
+    mov eax, schedHead_size
+    mul ebx 
+    lea rsi, scheduleLists
+    add rsi, rax
+    pop rbx
+    pop rax
+    return 
+
+getScheduleLock:
+;Will attempt to get the lock for a schedule head. Will spin on it
+; until it can get it. 
+;Input: rsi -> Schedule head to obtain lock for.
+    push rax
+    push rbx
+    xor ebx, ebx
+    dec ebx     ;Make into -1
+.lp:
+    xor eax, eax    ;Set/Reset al to zero
+    ;If var = al, move bl (-1) into the lock. Else mov var into al.
+    lock cmpxchg byte [rsi + schedHead.bLock], bl
+    jnz .lp     ;If the var was not 0, check again!
+    pop rbx
+    pop rax
+    return
+
+
+releaseScheduleLock:
+    mov byte [rsi + schedHead.bLock], 0
     return
