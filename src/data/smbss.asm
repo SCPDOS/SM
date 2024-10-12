@@ -34,6 +34,10 @@ pCurTask    dq ?    ;Ptr to the current task PTDA
 dosLock     db critLock_size dup (?)    ;Critical section lock
 drvLock     db critLock_size dup (?)    ;Critical section lock
 
+;Prioritised List pointers
+scheduleLists:
+    db 32*schedHead_size dup (?)    ;32 schedules, 0-31
+
 
 pIDT:
     .limit  dw ?
