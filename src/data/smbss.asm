@@ -38,6 +38,8 @@ drvLock     db critLock_size dup (?)    ;Critical section lock
 scheduleLists:
     db 32*schedHead_size dup (?)    ;32 schedules, 0-31
 
+sleepPtr    dq 0    ;Pointer to the head of the sleep list
+
 pIDT:
     .limit  dw ?
     .base   dq ?

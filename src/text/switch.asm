@@ -154,6 +154,41 @@ taskSwitch:
     popfq   ;Pop flags back right at the end :)
     return
 
+doSleepMgmt:
+;Decrements the sleep counter for each sleeping tcb on the sleep list
+; and removes entries from the list if they have finished their sleep.
+    push rdi
+    push rsi
+    xor esi, esi    ;Zero the pointer
+    mov rdi, qword [sleepPtr]
+.lp:
+    test rdi, rdi
+    jz .exit
+    cmp dword [rdi + tcb.dSleepLen], 0      ;A never awaken task?
+    je .gotoNext
+    dec dword [rdi + tcb.dSleepLen]
+    jnz .gotoNext
+;Here take the tcb out of the sleep list
+    push rax
+    mov rax, qword [rdi + tcb.pNSlepTcb]
+    test rsi, rsi   ;Is rdi the first tcb in the list?
+    jnz .noHead
+    mov qword [sleepPtr], rax ;If so, put the link into the head
+    mov rdi, rax
+    pop rax
+    jmp short .lp
+.noHead:
+    mov qword [rsi + tcb.pNSlepTcb], rax ;Else in the tcb
+    pop rax
+.gotoNext:
+    mov rsi, rdi    ;Make the current tcb the anchor
+    mov rdi, qword [rdi + tcb.pNSlepTcb]    ;Get the next tcb
+    jmp short .lp
+.exit:
+    pop rsi
+    pop rdi
+    return
+
 fatalHalt:
 ;This is the handler if a fatal error occurs where we need to halt the 
 ; machine. We call DOS as we don't need to preserve anything since we 

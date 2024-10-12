@@ -33,11 +33,12 @@ endstruc
 struc tcb 
 ;The following variable IS ONLY touched by the scheduler.
 ;It is meaningless w/o a schedule lock!
-    .pNextSTcb  dq ?   ;Points to the next tcb in the schedule
+    .pNSchdTcb  dq ?   ;Points to the next tcb in the schedule
 ;Here begins the actual TCB.
-    .pNextPTcb  dq ?    ;Ptr to the next tcb owned by the process
+    .pNProcTcb  dq ?    ;Ptr to the next tcb owned by the process
     .wFlags     dw ?    ;Flags for the Thread Control Block
 ;Sleep and Blocking States
+    .pNSlepTcb  dq ?    ;Ptr to the next tcb in the sleep chain
     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
     .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
     .qEventId   dq ?    ;ID to check for block/run calls.
