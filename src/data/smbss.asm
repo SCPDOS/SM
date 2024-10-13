@@ -29,8 +29,8 @@ bSM_Req     db ?    ;If set, the byte below indicates the requested screen
 bSM_Req_Scr db ?    ;Screen number to swap to
 
 ;Thread management
-dCurThread  dd ?    ;Task number. Offset into the PCB table.
-pCurThread  dq ?    ;Ptr to the current thread.
+hCurThd     dd ?    ;Current Thread Handle
+pCurThd     dq ?    ;Ptr to the current thread ptda.
 
 ;Supported Critical section locks
 dosLock     db critLock_size dup (?)    ;Critical section lock

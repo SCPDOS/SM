@@ -63,7 +63,7 @@ procBlock:
 ;       ZF=NZ -> Someone (probably scheduler) woke up this task prematurely
     push rsi
     push rdi
-    mov rdi, qword [pCurThread]
+    mov rdi, qword [pCurThd]
 ;Start by indicating that the thread can go to sleep.
     or word [rdi + ptda.wFlags], THREAD_SLEEP
     and word [rdi + ptda.wFlags], ~THREAD_ALIVE

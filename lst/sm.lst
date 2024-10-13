@@ -822,8 +822,8 @@
    131                              <1> ;Now set up the PCB Table information
    132 0000019A 48893D(18000000)    <1>     mov qword [pPcbTbl], rdi    ;Store ptr to the first pcb soth here
    133 000001A1 4881C710000000      <1>     add rdi, soth_size          ;Go to the first entry here
-   134 000001A8 48893D(41000000)    <1>     mov qword [pCurThread], rdi ;The session manager is the current task
-   135 000001AF C705(3D000000)0000- <1>     mov dword [dCurThread], SM_SESSION
+   134 000001A8 48893D(41000000)    <1>     mov qword [pCurThd], rdi ;The session manager is the current task
+   135 000001AF C705(3D000000)0000- <1>     mov dword [hCurThd], SM_SESSION
    135 000001B7 0000                <1>
    136                              <1> ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
    137 000001B9 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy]
@@ -1249,7 +1249,7 @@
    100                              <1> ;Else, we are a DOS critical section, go straight to the lock code
    101                              <1> .lockMain:
    102                              <1> ;Entered with rdi -> Lock to check
-   103 000005D4 488B05(41000000)    <1>     mov rax, qword [pCurThread]   ;Get the ptr to the current task
+   103 000005D4 488B05(41000000)    <1>     mov rax, qword [pCurThd]   ;Get the ptr to the current task
    104 000005DB 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If the lock is free, take it!
    105 000005E1 7506                <1>     jne .noGive
    106 000005E3 48894704            <1>     mov qword [rdi + critLock.pOwnerPcb], rax  ;Set yourself as owner!
@@ -1299,7 +1299,7 @@
    150 0000062E 3D09000000          <1>     cmp eax, drvWRITEVERIFY
    151 00000633 75C3                <1>     jne .exit
    152                              <1> .ioReq:
-   153 00000635 488B05(41000000)    <1>     mov rax, qword [pCurThread]
+   153 00000635 488B05(41000000)    <1>     mov rax, qword [pCurThd]
    154 0000063C 8B00                <1>     mov eax, dword [rax + pcb.hScrnNum]
    155 0000063E 89431A              <1>     mov dword [rbx + ioReqPkt.strtsc], eax
    156 00000641 EBB5                <1>     jmp short .exit
@@ -1317,7 +1317,7 @@
    168 0000065B 480F44F8            <1>     cmove rdi, rax  ;Swap rdi to drvLock if AL=2
    169 0000065F 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If lock is free, exit!
    170 00000665 740F                <1>     je .exit
-   171 00000667 488B05(41000000)    <1>     mov rax, qword [pCurThread]   ;Else, check we own the lock
+   171 00000667 488B05(41000000)    <1>     mov rax, qword [pCurThd]   ;Else, check we own the lock
    172 0000066E 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax
    173 00000672 7502                <1>     jne .exit   ;If we don't own the lock, exit!
    174 00000674 FF0F                <1>     dec dword [rdi + critLock.dCount]   ;Else, decrement the lock!
@@ -1331,7 +1331,7 @@
    182                              <1> ; enter the lock! Else, this function will do nothing.
    183 0000067A 50                  <1>     push rax
    184 0000067B 57                  <1>     push rdi
-   185 0000067C 488B05(41000000)    <1>     mov rax, qword [pCurThread]
+   185 0000067C 488B05(41000000)    <1>     mov rax, qword [pCurThd]
    186 00000683 488D3D(49000000)    <1>     lea rdi, dosLock
    187 0000068A E810000000          <1>     call .clearLock
    188 0000068F 488D3D(55000000)    <1>     lea rdi, drvLock
@@ -1400,7 +1400,7 @@
     33                              <1> sleepCurrentTask:
     34                              <1> ;Puts the current task on ice, saves all of its relevant state in 
     35                              <1> ; the pcb and then returns to the caller.
-    36 00000718 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    36 00000718 488B3D(41000000)    <1>     mov rdi, qword [pCurThd]
     37 0000071F 57                  <1>     push rdi    ;Save the CurTask pointer for use later!
     38 00000720 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
     39 00000727 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
@@ -1439,7 +1439,7 @@
     71                              <1> ;Start by checking that we don't own the uninterruptable lock. If
     72                              <1> ; we do, exit! We should never be in a situation where it is allocated 
     73                              <1> ; and we don't own it here.
-    74 0000077C 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    74 0000077C 488B3D(41000000)    <1>     mov rdi, qword [pCurThd]
     75 00000783 8B05(55000000)      <1>     mov eax, dword [drvLock + critLock.dCount]
     76 00000789 85C0                <1>     test eax, eax
     77 0000078B 7416                <1>     jz .noDrvLock   ;Not owned, proceed!
@@ -1464,10 +1464,10 @@
     90                              <1> ;rdi points to the current task.
     91                              <1> 
     92                              <1> ;End by setting the new task and signalling procrun on this
-    93 000007A4 890D(3D000000)      <1>     mov dword [dCurThread], ecx  ;Store the task number 
+    93 000007A4 890D(3D000000)      <1>     mov dword [hCurThd], ecx  ;Store the task number 
     94 000007AA E8EB010000          <1>     call getPcbPtr ;Get ptr in rdi to the current PCB table
     95 000007AF 4889FB              <1>     mov rbx, rdi
-    96 000007B2 48891D(41000000)    <1>     mov qword [pCurThread], rbx           ;Setup internal data properly!
+    96 000007B2 48891D(41000000)    <1>     mov qword [pCurThd], rbx           ;Setup internal data properly!
     97                              <1>     return
     13 000007B9 C3                  <2>  ret
     98                              <1> 
@@ -1477,10 +1477,10 @@
    102                              <1> ;If a task needed to be put to sleep for a period of time, then 
    103                              <1> ; we have already set the sleep information in the pcb before coming
    104                              <1> ; here.
-   105 000007BA 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Get the ptr to the current session. Save rbx.
+   105 000007BA 48871D(41000000)    <1>     xchg qword [pCurThd], rbx  ;Get the ptr to the current session. Save rbx.
    106 000007C1 48896352            <1>     mov qword [rbx + pcb.sPtda + ptda.qRSP], rsp
    107 000007C5 488DA3DA000000      <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.boS] ;Point rsp to where to store regs
-   108 000007CC 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Get back the value of rbx in rbx.
+   108 000007CC 48871D(41000000)    <1>     xchg qword [pCurThd], rbx  ;Get back the value of rbx in rbx.
    109 000007D3 50                  <1>     push rax
    110 000007D4 53                  <1>     push rbx
    111 000007D5 51                  <1>     push rcx
@@ -1504,7 +1504,7 @@
    129 000007F8 E87FFFFFFF          <1>     call chooseNextTask     ;Sets the task variables for the new task
    130 000007FD E8BBFEFFFF          <1>     call awakenNewTask
    131                              <1> 
-   132 00000802 488B1D(41000000)    <1>     mov rbx, qword [pCurThread]
+   132 00000802 488B1D(41000000)    <1>     mov rbx, qword [pCurThd]
    133                              <1> ;Skip reloading the flags here!
    134 00000809 488D6362            <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.sRegsTbl + 8]
    135 0000080D 415F                <1>     pop r15
@@ -1522,11 +1522,11 @@
    147 00000821 59                  <1>     pop rcx
    148 00000822 5B                  <1>     pop rbx
    149 00000823 58                  <1>     pop rax
-   150 00000824 48871D(41000000)    <1>     xchg qword [pCurThread], rbx
+   150 00000824 48871D(41000000)    <1>     xchg qword [pCurThd], rbx
    151 0000082B 488B6352            <1>     mov rsp, qword [rbx + pcb.sPtda + ptda.qRSP]
    152                              <1> ;Reload the flags once we have switched stacks!
    153 0000082F FF735A              <1>     push qword [rbx + pcb.sPtda + ptda.sRegsTbl]
-   154 00000832 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Now swap things back  
+   154 00000832 48871D(41000000)    <1>     xchg qword [pCurThd], rbx  ;Now swap things back  
    155 00000839 9D                  <1>     popfq   ;Pop flags back right at the end :)
    156                              <1>     return
     13 0000083A C3                  <2>  ret
@@ -1597,7 +1597,7 @@
     63                              <1> ;       ZF=NZ -> Someone (probably scheduler) woke up this task prematurely
     64 00000894 56                  <1>     push rsi
     65 00000895 57                  <1>     push rdi
-    66 00000896 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    66 00000896 488B3D(41000000)    <1>     mov rdi, qword [pCurThd]
     67                              <1> ;Start by indicating that the thread can go to sleep.
     68 0000089D 66814F180400        <1>     or word [rdi + ptda.wFlags], THREAD_SLEEP
     69 000008A3 66816718FEFF        <1>     and word [rdi + ptda.wFlags], ~THREAD_ALIVE
@@ -2155,8 +2155,8 @@
     29 0000003C ??                  <1> bSM_Req_Scr db ?    ;Screen number to swap to
     30                              <1> 
     31                              <1> ;Thread management
-    32 0000003D ????????            <1> dCurThread  dd ?    ;Task number. Offset into the PCB table.
-    33 00000041 ????????????????    <1> pCurThread  dq ?    ;Ptr to the current thread.
+    32 0000003D ????????            <1> hCurThd     dd ?    ;Current Thread Handle
+    33 00000041 ????????????????    <1> pCurThd     dq ?    ;Ptr to the current thread ptda.
     34                              <1> 
     35                              <1> ;Supported Critical section locks
     36 00000049 <res Ch>            <1> dosLock     db critLock_size dup (?)    ;Critical section lock

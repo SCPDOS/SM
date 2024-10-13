@@ -33,7 +33,7 @@ awakenNewTask:
 sleepCurrentTask:
 ;Puts the current task on ice, saves all of its relevant state in 
 ; the pcb and then returns to the caller.
-    mov rdi, qword [pCurThread]
+    mov rdi, qword [pCurThd]
     push rdi    ;Save the CurTask pointer for use later!
     lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
     mov rsi, qword [pDosSda]
@@ -71,7 +71,7 @@ chooseNextTask:
 ;Start by checking that we don't own the uninterruptable lock. If
 ; we do, exit! We should never be in a situation where it is allocated 
 ; and we don't own it here.
-    mov rdi, qword [pCurThread]
+    mov rdi, qword [pCurThd]
     mov eax, dword [drvLock + critLock.dCount]
     test eax, eax
     jz .noDrvLock   ;Not owned, proceed!
@@ -90,10 +90,10 @@ chooseNextTask:
 ;rdi points to the current task.
 
 ;End by setting the new task and signalling procrun on this
-    mov dword [dCurThread], ecx  ;Store the task number 
+    mov dword [hCurThd], ecx  ;Store the task number 
     call getPcbPtr ;Get ptr in rdi to the current PCB table
     mov rbx, rdi
-    mov qword [pCurThread], rbx           ;Setup internal data properly!
+    mov qword [pCurThd], rbx           ;Setup internal data properly!
     return
 
 
@@ -102,10 +102,10 @@ taskSwitch:
 ;If a task needed to be put to sleep for a period of time, then 
 ; we have already set the sleep information in the pcb before coming
 ; here.
-    xchg qword [pCurThread], rbx  ;Get the ptr to the current session. Save rbx.
+    xchg qword [pCurThd], rbx  ;Get the ptr to the current session. Save rbx.
     mov qword [rbx + pcb.sPtda + ptda.qRSP], rsp
     lea rsp, qword [rbx + pcb.sPtda + ptda.boS] ;Point rsp to where to store regs
-    xchg qword [pCurThread], rbx  ;Get back the value of rbx in rbx.
+    xchg qword [pCurThd], rbx  ;Get back the value of rbx in rbx.
     push rax
     push rbx
     push rcx
@@ -129,7 +129,7 @@ taskSwitch:
     call chooseNextTask     ;Sets the task variables for the new task
     call awakenNewTask
 
-    mov rbx, qword [pCurThread]
+    mov rbx, qword [pCurThd]
 ;Skip reloading the flags here!
     lea rsp, qword [rbx + pcb.sPtda + ptda.sRegsTbl + 8]
     pop r15
@@ -147,10 +147,10 @@ taskSwitch:
     pop rcx
     pop rbx
     pop rax
-    xchg qword [pCurThread], rbx
+    xchg qword [pCurThd], rbx
     mov rsp, qword [rbx + pcb.sPtda + ptda.qRSP]
 ;Reload the flags once we have switched stacks!
     push qword [rbx + pcb.sPtda + ptda.sRegsTbl]
-    xchg qword [pCurThread], rbx  ;Now swap things back  
+    xchg qword [pCurThd], rbx  ;Now swap things back  
     popfq   ;Pop flags back right at the end :)
     return
