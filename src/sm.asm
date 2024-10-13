@@ -10,6 +10,7 @@ Segment cseg code private align=16
 %include "./src/text/disp.asm"
 %include "./src/text/int.asm"
 %include "./src/text/switch.asm"
+%include "./src/text/proc.asm"
 %include "./src/text/util.asm"
 %include "./src/text/shell.asm"
 

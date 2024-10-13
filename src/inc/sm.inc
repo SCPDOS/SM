@@ -6,7 +6,7 @@ MAX_TASK    equ 32      ;Maximum of 32 tasks
 ;Critical Lock
 struc critLock
     .dCount     dd ?    ;When this is zero, the lock is free
-    .pOwnerPdta dq ?    ;Ptr to the owner of the lock!
+    .pOwnerPcb dq ?    ;Ptr to the owner of the lock!
 endstruc
 
 ;System Object Table header
@@ -24,21 +24,22 @@ endstruc
 struc schedHead
     .bLock      db ?    ;Set if this schedule is locked (no writes)
     .dNumEntry  dd ?    ;Number of entries in this schedule
-    .pSchedHead dq ?    ;Ptr to next tcb in schedule to be executed
-    .pSchedTail dq ?    ;Ptr to last tcb in schedule
+    .pSchedHead dq ?    ;Ptr to next ptda in schedule to be executed
+    .pSchedTail dq ?    ;Ptr to last ptda in schedule
 endstruc
 
-;Thread Control block, keeps thread state, including the 
+;Per-task (thread) data area, keeps task (thread) state, including the 
 ; entries modified by the scheduler!
-struc tcb 
+struc ptda 
 ;The following variable IS ONLY touched by the scheduler.
 ;It is meaningless w/o a schedule lock!
-    .pNSchdTcb  dq ?   ;Points to the next tcb in the schedule
-;Here begins the actual TCB.
-    .pNProcTcb  dq ?    ;Ptr to the next tcb owned by the process
+    .pNSchdPtda dq ?   ;Points to the next ptda in the schedule
+;Here begins the actual PTDA.
+    .pPcb       dq ?    ;Ptr to the owning pcb (process)
+    .pNProcPtda dq ?    ;Ptr to the next ptda owned by the process
     .wFlags     dw ?    ;Flags for the Thread Control Block
 ;Sleep and Blocking States
-    .pNSlepTcb  dq ?    ;Ptr to the next tcb in the sleep chain
+    .pNSlepPtda dq ?    ;Ptr to the next ptda in the sleep chain
     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
     .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
     .qEventId   dq ?    ;ID to check for block/run calls.
@@ -50,19 +51,29 @@ struc tcb
     ;.pFPUState  dq 512 dup (?)  ;Extended state storage
 endstruc
 
-;Per-Task Data Area, keeps full process state.
+AWAKE_NORMAL        equ 0   ;Normal task awake code
+AWAKE_TIMEOUT       equ 1   ;Task was awoken by timeout
+AWAKE_INTER         equ 2   ;Task was interrupted
+AWAKE_STARVING      equ 3   ;Awoken by scheduler because system was starving
+
+THREAD_ALIVE        equ 1   ;Set if thread alive.
+THREAD_DEAD         equ 2   ;Set if thread awaits reaping (a CWAIT call).
+THREAD_SLEEP        equ 4   ;Set if thread asleep.
+THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
+
+;Process control block, keeps full process state.
 ;Must be aligned in size to 16 bytes.
-struc ptda  
+struc pcb  
 ;Process metadata
     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
-    .hPtda      dd ?    ;Hdl to this ptda, currently just an offset
-    .hParPtda   dd ?    ;Handle to the parent ptda
+    .hPcb       dd ?    ;Hdl to this pcb, currently just an offset
+    .hParPcb    dd ?    ;Handle to the parent pcb
     .dCsid      dd ?    ;CSID of this task chain (id of root program)
     .wFlags     dw ?    ;Task flags
-;Thread control block, will eventually be replaced to a ptr to the 
-; main thread tcb.
+;PTDA block, will eventually be replaced to a ptr to the 
+; main thread ptda.
     alignb 10h
-    .sTcb       db tcb_size dup (?) ;Thread's schedule block
+    .sPtda       db ptda_size dup (?) ;Thread 0's PDTA
 ;Interrupt handles for replacing on task swap
     .pInt22h    dq ?    ;Int 22h handler on task switch
     .pInt23h    dq ?    ;Int 23h handler on task switch
@@ -71,10 +82,6 @@ struc ptda
 ;Per-process DOS state
     .sdaCopy:           ;Copy of the DOS sda for this session when not active
 endstruc
-
-ptda_sleep      equ 1   ;Timed sleep
-ptda_block      equ 2   ;Blocked thread
-ptda_interrupt  equ 4   ;Interruptable sleep
 
 struc mScrCap   ;Communication packet with MCON
     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)

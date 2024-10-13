@@ -42,8 +42,8 @@ shellMain:
     lea rdx, waitStr    ;Now print the state of the session
     call puts
     ;Now get the string to print
-    call getPtdaPtr ;Get the ptda ptr in rdi
-    mov rdx, qword [rdi + ptda.sdaCopy + sda.currentPSP]    ;Get the PSPptr
+    call getPcbPtr ;Get the pcb ptr in rdi
+    mov rdx, qword [rdi + pcb.sdaCopy + sda.currentPSP]    ;Get the PSPptr
     call getProcName    ;Get the process name ptr for process of PSP in rdx
     jnc .nameFound
     lea rdx, noNameStr
@@ -51,7 +51,7 @@ shellMain:
     jmp short .nextSession
 .nameFound:
     mov rdi, rdx    ;Copy the ptr here to get the len of the ASCIIZ string
-    push rcx        ;Save the number of the ptda we are at
+    push rcx        ;Save the number of the pcb we are at
     mov eax, 1212h
     int 2Fh
     ;ecx now has the string length + terminating null
@@ -60,7 +60,7 @@ shellMain:
     mov ebx, 1  ;STDOUT
     mov eax, 4000h
     int 21h
-    pop rcx     ;Get back the ptda number
+    pop rcx     ;Get back the pcb number
 .nextSession:
     call putNewline
     inc ecx

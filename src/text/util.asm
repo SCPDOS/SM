@@ -35,15 +35,15 @@ setIntVector:
     return
 
 
-getPtdaPtr:
-;Input: ecx = Number of the ptda to get the pointer of!
-;Output: rdi -> PTDA requested
-    mov rdi, qword [pPtdaTbl]
+getPcbPtr:
+;Input: ecx = Number of the pcb to get the pointer of!
+;Output: rdi -> PCB requested
+    mov rdi, qword [pPcbTbl]
     test ecx, ecx   ;Pick off the case where session number is 0.
     retz
     push rax
     push rcx
-    mov eax, dword [dPtdaLen]
+    mov eax, dword [dPcbLen]
     mul ecx 
     add rdi, rax
     pop rcx
@@ -51,9 +51,9 @@ getPtdaPtr:
     return
 
 getThreadPtr:
-;Input: rdi -> PTDA to get the thread pointer to
-;Output: rbp -> Primary (foreground) tcb of the process
-    lea rbp, qword [rdi + ptda.sTcb]
+;Input: rdi -> PCB to get the thread pointer to
+;Output: rbp -> Primary (foreground) ptda of the process
+    lea rbp, qword [rdi + pcb.sPtda]
     return
 
 getSchedHeadPtr:

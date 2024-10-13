@@ -4,6 +4,7 @@
 timerIrq:
 ;This is the replacement interrupt handler. 
     cli
+    call doSleepMgmt    ;Make sure to treat all sleeping tasks properly first!
     push rax
     inc byte [bSliceCnt]     ;Increment the slice counter
     movzx eax, byte [bSliceSize]  ;Number of ms in one timeslice
@@ -99,13 +100,13 @@ enterCriticalSection:    ;AH=80h
 ;Else, we are a DOS critical section, go straight to the lock code
 .lockMain:
 ;Entered with rdi -> Lock to check
-    mov rax, qword [pCurTask]   ;Get the ptr to the current task
+    mov rax, qword [pCurThread]   ;Get the ptr to the current task
     cmp dword [rdi + critLock.dCount], 0    ;If the lock is free, take it!
     jne .noGive
-    mov qword [rdi + critLock.pOwnerPdta], rax  ;Set yourself as owner!
+    mov qword [rdi + critLock.pOwnerPcb], rax  ;Set yourself as owner!
     jmp short .incCount
 .noGive:
-    cmp qword [rdi + critLock.pOwnerPdta], rax
+    cmp qword [rdi + critLock.pOwnerPcb], rax
     je .incCount    ;If we own the lock, increment the count!
     call taskSwitch ;Else, put the calling task on ice for one cycle.
     jmp short .lockMain     ;Try obtain the lock again!
@@ -149,8 +150,8 @@ enterCriticalSection:    ;AH=80h
     cmp eax, drvWRITEVERIFY
     jne .exit
 .ioReq:
-    mov rax, qword [pCurTask]
-    mov eax, dword [rax + ptda.hScrnNum]
+    mov rax, qword [pCurThread]
+    mov eax, dword [rax + pcb.hScrnNum]
     mov dword [rbx + ioReqPkt.strtsc], eax
     jmp short .exit
 
@@ -167,8 +168,8 @@ leaveCriticalSection:    ;AH=81h
     cmove rdi, rax  ;Swap rdi to drvLock if AL=2
     cmp dword [rdi + critLock.dCount], 0    ;If lock is free, exit!
     je .exit
-    mov rax, qword [pCurTask]   ;Else, check we own the lock
-    cmp qword [rdi + critLock.pOwnerPdta], rax
+    mov rax, qword [pCurThread]   ;Else, check we own the lock
+    cmp qword [rdi + critLock.pOwnerPcb], rax
     jne .exit   ;If we don't own the lock, exit!
     dec dword [rdi + critLock.dCount]   ;Else, decrement the lock!
 .exit:
@@ -181,7 +182,7 @@ deleteCriticalSection:      ;AH=82h
 ; enter the lock! Else, this function will do nothing.
     push rax
     push rdi
-    mov rax, qword [pCurTask]
+    mov rax, qword [pCurThread]
     lea rdi, dosLock
     call .clearLock
     lea rdi, drvLock
@@ -192,7 +193,7 @@ deleteCriticalSection:      ;AH=82h
 .clearLock:
     test dword [rdi + critLock.dCount], -1    ;Is this lock allocated?
     retz    ;If this lock is free, exit! 
-    cmp qword [rdi + critLock.pOwnerPdta], rax  ;Else, do we own it?
+    cmp qword [rdi + critLock.pOwnerPcb], rax  ;Else, do we own it?
     retne   ;If not, exit!
     mov dword [rdi + critLock.dCount], 0    ;Else, free it!
     return

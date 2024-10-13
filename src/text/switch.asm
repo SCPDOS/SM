@@ -10,49 +10,49 @@ awakenNewTask:
 
 
 ;Set the SDA to the new tasks' SDA. 
-    lea rsi, qword [rbx + ptda.sdaCopy] ;Point rdi to the sda space
+    lea rsi, qword [rbx + pcb.sdaCopy] ;Point rdi to the sda space
     mov rdi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Transfer over the SDA
 
 ;Set the new tasks' DOS interrupt handlers.
-    mov rdx, qword [rbx + ptda.pInt2Eh]
+    mov rdx, qword [rbx + pcb.pInt2Eh]
     mov eax, 2Eh
     call setIntVector    
-    mov rdx, qword [rbx + ptda.pInt24h]
+    mov rdx, qword [rbx + pcb.pInt24h]
     mov eax, 24h
     call setIntVector
-    mov rdx, qword [rbx + ptda.pInt23h]
+    mov rdx, qword [rbx + pcb.pInt23h]
     mov eax, 23h
     call setIntVector
-    mov rdx, qword [rbx + ptda.pInt22h]
+    mov rdx, qword [rbx + pcb.pInt22h]
     mov eax, 22h
     call setIntVector 
     return
 
 sleepCurrentTask:
 ;Puts the current task on ice, saves all of its relevant state in 
-; the PDTA and then returns to the caller.
-    mov rdi, qword [pCurTask]
+; the pcb and then returns to the caller.
+    mov rdi, qword [pCurThread]
     push rdi    ;Save the CurTask pointer for use later!
-    lea rdi, qword [rdi + ptda.sdaCopy] ;Point rdi to the sda space
+    lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
     mov rsi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Transfer over the SDA
     pop rdi
-;Save the current Int 22h, 23h and 24h handlers in the paused tasks' PTDA.
+;Save the current Int 22h, 23h and 24h handlers in the paused tasks' PCB.
     mov eax, 22h
     call getIntVector
-    mov qword [rdi + ptda.pInt22h], rbx
+    mov qword [rdi + pcb.pInt22h], rbx
     mov eax, 23h
     call getIntVector
-    mov qword [rdi + ptda.pInt23h], rbx
+    mov qword [rdi + pcb.pInt23h], rbx
     mov eax, 24h
     call getIntVector
-    mov qword [rdi + ptda.pInt24h], rbx
+    mov qword [rdi + pcb.pInt24h], rbx
     mov eax, 2Eh
     call getIntVector
-    mov qword [rdi + ptda.pInt2Eh], rbx
+    mov qword [rdi + pcb.pInt2Eh], rbx
     return
 
 chooseNextTask:
@@ -71,11 +71,11 @@ chooseNextTask:
 ;Start by checking that we don't own the uninterruptable lock. If
 ; we do, exit! We should never be in a situation where it is allocated 
 ; and we don't own it here.
-    mov rdi, qword [pCurTask]
+    mov rdi, qword [pCurThread]
     mov eax, dword [drvLock + critLock.dCount]
     test eax, eax
     jz .noDrvLock   ;Not owned, proceed!
-    cmp rdi, qword [drvLock + critLock.pOwnerPdta]
+    cmp rdi, qword [drvLock + critLock.pOwnerPcb]
     rete    ;Return if they are equal!
     lea rdx, badLockStr
     jmp fatalHalt
@@ -87,24 +87,25 @@ chooseNextTask:
 ; screen. If it isnt, swap to the task on that screen. Else, swap
 ; to the next task that isn't asleep. If all tasks are asleep then 
 ; pick the next task and wait on it.
+;rdi points to the current task.
 
 ;End by setting the new task and signalling procrun on this
-    mov dword [dCurTask], ecx  ;Store the task number 
-    call getPtdaPtr ;Get ptr in rdi to the current PTDA table
+    mov dword [dCurThread], ecx  ;Store the task number 
+    call getPcbPtr ;Get ptr in rdi to the current PCB table
     mov rbx, rdi
-    mov qword [pCurTask], rbx           ;Setup internal data properly!
+    mov qword [pCurThread], rbx           ;Setup internal data properly!
     return
 
 
 taskSwitch:
 ;Called always with interrupts turned off!
 ;If a task needed to be put to sleep for a period of time, then 
-; we have already set the sleep information in the ptda before coming
+; we have already set the sleep information in the pcb before coming
 ; here.
-    xchg qword [pCurTask], rbx  ;Get the ptr to the current session. Save rbx.
-    mov qword [rbx + ptda.sTcb + tcb.qRSP], rsp
-    lea rsp, qword [rbx + ptda.sTcb + tcb.boS] ;Point rsp to where to store regs
-    xchg qword [pCurTask], rbx  ;Get back the value of rbx in rbx.
+    xchg qword [pCurThread], rbx  ;Get the ptr to the current session. Save rbx.
+    mov qword [rbx + pcb.sPtda + ptda.qRSP], rsp
+    lea rsp, qword [rbx + pcb.sPtda + ptda.boS] ;Point rsp to where to store regs
+    xchg qword [pCurThread], rbx  ;Get back the value of rbx in rbx.
     push rax
     push rbx
     push rcx
@@ -128,9 +129,9 @@ taskSwitch:
     call chooseNextTask     ;Sets the task variables for the new task
     call awakenNewTask
 
-    mov rbx, qword [pCurTask]
+    mov rbx, qword [pCurThread]
 ;Skip reloading the flags here!
-    lea rsp, qword [rbx + ptda.sTcb + tcb.sRegsTbl + 8]
+    lea rsp, qword [rbx + pcb.sPtda + ptda.sRegsTbl + 8]
     pop r15
     pop r14
     pop r13
@@ -146,68 +147,10 @@ taskSwitch:
     pop rcx
     pop rbx
     pop rax
-    xchg qword [pCurTask], rbx
-    mov rsp, qword [rbx + ptda.sTcb + tcb.qRSP]
+    xchg qword [pCurThread], rbx
+    mov rsp, qword [rbx + pcb.sPtda + ptda.qRSP]
 ;Reload the flags once we have switched stacks!
-    push qword [rbx + ptda.sTcb + tcb.sRegsTbl]
-    xchg qword [pCurTask], rbx  ;Now swap things back  
+    push qword [rbx + pcb.sPtda + ptda.sRegsTbl]
+    xchg qword [pCurThread], rbx  ;Now swap things back  
     popfq   ;Pop flags back right at the end :)
-    return
-
-doSleepMgmt:
-;Decrements the sleep counter for each sleeping tcb on the sleep list
-; and removes entries from the list if they have finished their sleep.
-    push rdi
-    push rsi
-    xor esi, esi    ;Zero the pointer
-    mov rdi, qword [sleepPtr]
-.lp:
-    test rdi, rdi
-    jz .exit
-    cmp dword [rdi + tcb.dSleepLen], 0      ;A never awaken task?
-    je .gotoNext
-    dec dword [rdi + tcb.dSleepLen]
-    jnz .gotoNext
-;Here take the tcb out of the sleep list
-    push rax
-    mov rax, qword [rdi + tcb.pNSlepTcb]
-    test rsi, rsi   ;Is rdi the first tcb in the list?
-    jnz .noHead
-    mov qword [sleepPtr], rax ;If so, put the link into the head
-    mov rdi, rax
-    pop rax
-    jmp short .lp
-.noHead:
-    mov qword [rsi + tcb.pNSlepTcb], rax ;Else in the tcb
-    pop rax
-.gotoNext:
-    mov rsi, rdi    ;Make the current tcb the anchor
-    mov rdi, qword [rdi + tcb.pNSlepTcb]    ;Get the next tcb
-    jmp short .lp
-.exit:
-    pop rsi
-    pop rdi
-    return
-
-fatalHalt:
-;This is the handler if a fatal error occurs where we need to halt the 
-; machine. We call DOS as we don't need to preserve anything since we 
-; freeze the machine. 
-;Input: rdx -> String to print.
-    push rdx
-    lea rdx, fatalStr
-    call .outStr
-    pop rdx
-    call .outStr
-    lea rdx, sysHltStr
-    call .outStr
-;
-;Here provide a regdump of the system registers (and possibly stack?). 
-;
-    cli
-.deadLp:
-    jmp short .deadLp
-.outStr:
-    mov eax, 0900h
-    int 21h
     return

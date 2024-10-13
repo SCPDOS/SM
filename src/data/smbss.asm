@@ -3,8 +3,8 @@
 ;Write Once variables, ALL SET UP.
 pDosMgrPsp  dq ?    ;Pointer to the DOSMGR PSP
 pDosSda     dq ?    ;Pointer to the DOS SDA
-pPtdaTbl    dq ?    ;Pointer to the Per-Task data area table.
-dPtdaLen    dd ?    ;Length of each ptda
+pPcbTbl     dq ?    ;Pointer to the Process Control Block table.
+dPcbLen     dd ?    ;Length of each pcb
 dSdaLen     dd ?    ;Use the longer length. Change this in the future...
 dMaxSesIndx dd ?    ;Maximum screen session index! Max Session number = 7.
 
@@ -19,16 +19,16 @@ inStr       db 5 dup (?)
 
 ;Dynamic variables below
 
-;Screen Session management dataPtda
-bInTaskSwap db ?    ;Set if we in a task swap. Cannot be re-entered.
+;Screen Session management dataPcb
+bCurScrNum  db ?    ;Contains the current screen number!
 bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
 
 bSM_Req     db ?    ;If set, the byte below indicates the requested screen
 bSM_Req_Scr db ?    ;Screen number to swap to
 
-;Task management
-dCurTask    dd ?    ;Task number. Offset into the PTDA table.
-pCurTask    dq ?    ;Ptr to the current task PTDA
+;Thread management
+dCurThread  dd ?    ;Task number. Offset into the PCB table.
+pCurThread  dq ?    ;Ptr to the current thread.
 
 ;Supported Critical section locks
 dosLock     db critLock_size dup (?)    ;Critical section lock
@@ -38,7 +38,7 @@ drvLock     db critLock_size dup (?)    ;Critical section lock
 scheduleLists:
     db 32*schedHead_size dup (?)    ;32 schedules, 0-31
 
-sleepPtr    dq 0    ;Pointer to the head of the sleep list
+sleepPtr    dq ?    ;Pointer to the head of the sleep list
 
 pIDT:
     .limit  dw ?
