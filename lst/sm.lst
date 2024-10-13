@@ -4,115 +4,124 @@
      1                              <1> ;Structures and equates for DOSMGR
      2                              <1> 
      3                              <1> SM_SESSION  equ 0       ;Session number for Session Manager
-     4                              <1> MAX_TASK    equ 32      ;Maximum of 32 tasks
-     5                              <1> 
-     6                              <1> ;Critical Lock
-     7                              <1> struc critLock
-     8 00000000 ????????            <1>     .dCount     dd ?    ;When this is zero, the lock is free
-     9 00000004 ????????????????    <1>     .pOwnerPcb dq ?    ;Ptr to the owner of the lock!
-    10                              <1> endstruc
-    11                              <1> 
-    12                              <1> ;System Object Table header
-    13                              <1> struc soth  
-    14 00000000 ????????????????    <1>     .pNextSoth  dq ?    ;Pointer to the next soth
-    15 00000008 ????????            <1>     .dSize      dd ?    ;Size of the soth
-    16 0000000C ????                <1>     .wObjType   dw ?    ;Type of object stored in the table
-    17 0000000E ????                <1>     .wObjectSz  dw ?    ;Size of the objects stored in this table
-    18                              <1> endstruc
-    19                              <1>     OBJ_PROCESS equ 1
-    20                              <1>     OBJ_THREAD  equ 2
-    21                              <1> 
-    22                              <1> ;Schedule head, used to protect the schedules from multiple processors 
-    23                              <1> ; simultaneously modifying the list in a multiprocessor system.
-    24                              <1> struc schedHead
-    25 00000000 ??                  <1>     .bLock      db ?    ;Set if this schedule is locked (no writes)
-    26 00000001 ????????            <1>     .dNumEntry  dd ?    ;Number of entries in this schedule
-    27 00000005 ????????????????    <1>     .pSchedHead dq ?    ;Ptr to next ptda in schedule to be executed
-    28 0000000D ????????????????    <1>     .pSchedTail dq ?    ;Ptr to last ptda in schedule
-    29                              <1> endstruc
-    30                              <1> 
-    31                              <1> ;Per-task (thread) data area, keeps task (thread) state, including the 
-    32                              <1> ; entries modified by the scheduler!
-    33                              <1> struc ptda 
-    34                              <1> ;The following variable IS ONLY touched by the scheduler.
-    35                              <1> ;It is meaningless w/o a schedule lock!
-    36 00000000 ????????????????    <1>     .pNSchdPtda dq ?   ;Points to the next ptda in the schedule
-    37                              <1> ;Here begins the actual PTDA.
-    38 00000008 ????????????????    <1>     .pPcb       dq ?    ;Ptr to the owning pcb (process)
-    39 00000010 ????????????????    <1>     .pNProcPtda dq ?    ;Ptr to the next ptda owned by the process
-    40 00000018 ????                <1>     .wFlags     dw ?    ;Flags for the Thread Control Block
-    41                              <1> ;Sleep and Blocking States
-    42 0000001A ????????????????    <1>     .pNSlepPtda dq ?    ;Ptr to the next ptda in the sleep chain
-    43 00000022 ????????            <1>     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
-    44 00000026 ????????            <1>     .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
-    45 0000002A ????????????????    <1>     .qEventId   dq ?    ;ID to check for block/run calls.
-    46                              <1> ;Register storage
-    47 00000032 ????????????????    <1>     .qRSP       dq ?    ;RSP on task switch
-    48 0000003A <res 80h>           <1>     .sRegsTbl   dq 16 dup (?)   ;Register storage location
-    49                              <1>     .boS:
-    50                              <1>     ;alignb 16
-    51                              <1>     ;.pFPUState  dq 512 dup (?)  ;Extended state storage
-    52                              <1> endstruc
-    53                              <1> 
-    54                              <1> AWAKE_NORMAL        equ 0   ;Normal task awake code
-    55                              <1> AWAKE_TIMEOUT       equ 1   ;Task was awoken by timeout
-    56                              <1> AWAKE_INTER         equ 2   ;Task was interrupted
-    57                              <1> AWAKE_STARVING      equ 3   ;Awoken by scheduler because system was starving
+     4                              <1> MAX_TASK    equ 32      ;Maximum of 32 tasks (0-31)
+     5                              <1> MAX_SCHED   equ 31      ;Maximum Schedule number (31)
+     6                              <1> 
+     7                              <1> ;Critical Lock
+     8                              <1> struc critLock
+     9 00000000 ????????            <1>     .dCount     dd ?    ;When this is zero, the lock is free
+    10 00000004 ????????????????    <1>     .pOwnerPcb  dq ?    ;Ptr to the owner of the lock!
+    11                              <1> endstruc
+    12                              <1> 
+    13                              <1> ;System Object Table header
+    14                              <1> struc soth  
+    15 00000000 ????????????????    <1>     .pNextSoth  dq ?    ;Ptr to the next soth (-1 means end of chain)
+    16 00000008 ????????            <1>     .dNumEntry  dd ?    ;Number of entries in this SOTH
+    17 0000000C ????                <1>     .wObjType   dw ?    ;Type of object stored in the table
+    18 0000000E ????                <1>     .wObjectSz  dw ?    ;Size of the objects stored in this table
+    19                              <1> endstruc
+    20                              <1> 
+    21                              <1> OBJ_HDL     equ 0   ;A handle table header
+    22                              <1> OBJ_PCB     equ 1   ;A PCB table header
+    23                              <1> OBJ_PTDA    equ 2   ;A PTDA table header
+    24                              <1> 
+    25                              <1> ;Schedule head, used to protect the schedules from multiple processors 
+    26                              <1> ; simultaneously modifying the list in a multiprocessor system.
+    27                              <1> struc schedHead
+    28 00000000 ??                  <1>     .bLock      db ?    ;Set if this schedule is locked (no writes)
+    29 00000001 ????????            <1>     .dNumEntry  dd ?    ;Number of entries in this schedule
+    30 00000005 ????????????????    <1>     .pSchedHead dq ?    ;Ptr to next ptda in schedule to be executed
+    31 0000000D ????????????????    <1>     .pSchedTail dq ?    ;Ptr to last ptda in schedule
+    32                              <1> endstruc
+    33                              <1> 
+    34                              <1> 
+    35                              <1> 
+    36                              <1> ;Per-task (thread) data area, keeps task (thread) state, including the 
+    37                              <1> ; entries modified by the scheduler!
+    38                              <1> struc ptda 
+    39                              <1> ;The following variable IS ONLY touched by the scheduler.
+    40                              <1> ;It is meaningless w/o a schedule lock!
+    41 00000000 ????????????????    <1>     .pNSchdPtda dq ?   ;Points to the next ptda in the schedule
+    42                              <1> ;Here begins the actual PTDA.
+    43 00000008 ????????????????    <1>     .pPcb       dq ?    ;Ptr to the owning pcb (process)
+    44 00000010 ????????????????    <1>     .pNProcPtda dq ?    ;Ptr to the next ptda owned by the process
+    45 00000018 ????                <1>     .wFlags     dw ?    ;Flags for the Thread Control Block
+    46                              <1> ;Sleep and Blocking States
+    47 0000001A ????????????????    <1>     .pNSlepPtda dq ?    ;Ptr to the next ptda in the sleep chain
+    48 00000022 ????????            <1>     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
+    49 00000026 ????????            <1>     .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
+    50 0000002A ????????????????    <1>     .qEventId   dq ?    ;ID to check for block/run calls.
+    51                              <1> ;Register storage
+    52 00000032 ????????????????    <1>     .qRSP       dq ?    ;RSP on task switch
+    53 0000003A <res 80h>           <1>     .sRegsTbl   dq 16 dup (?)   ;Register storage location
+    54                              <1>     .boS:
+    55                              <1>     ;alignb 16
+    56                              <1>     ;.pFPUState  dq 512 dup (?)  ;Extended state storage
+    57                              <1> endstruc
     58                              <1> 
-    59                              <1> THREAD_ALIVE        equ 1   ;Set if thread alive.
-    60                              <1> THREAD_DEAD         equ 2   ;Set if thread awaits reaping (a CWAIT call).
-    61                              <1> THREAD_SLEEP        equ 4   ;Set if thread asleep.
-    62                              <1> THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
+    59                              <1> AWAKE_NORMAL        equ 0   ;Normal task awake code
+    60                              <1> AWAKE_TIMEOUT       equ 1   ;Task was awoken by timeout
+    61                              <1> AWAKE_INTER         equ 2   ;Task was interrupted
+    62                              <1> AWAKE_STARVING      equ 3   ;Awoken by scheduler because system was starving
     63                              <1> 
-    64                              <1> ;Process control block, keeps full process state.
-    65                              <1> ;Must be aligned in size to 16 bytes.
-    66                              <1> struc pcb  
-    67                              <1> ;Process metadata
-    68 00000000 ????????            <1>     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
-    69 00000004 ????????            <1>     .hPcb       dd ?    ;Hdl to this pcb, currently just an offset
-    70 00000008 ????????            <1>     .hParPcb    dd ?    ;Handle to the parent pcb
-    71 0000000C ????????            <1>     .dCsid      dd ?    ;CSID of this task chain (id of root program)
-    72 00000010 ????                <1>     .wFlags     dw ?    ;Task flags
-    73                              <1> ;PTDA block, will eventually be replaced to a ptr to the 
-    74                              <1> ; main thread ptda.
-    75 00000012 <res Eh>            <1>     alignb 10h
-    76 00000020 <res BAh>           <1>     .sPtda       db ptda_size dup (?) ;Thread 0's PDTA
-    77                              <1> ;Interrupt handles for replacing on task swap
-    78 000000DA ????????????????    <1>     .pInt22h    dq ?    ;Int 22h handler on task switch
-    79 000000E2 ????????????????    <1>     .pInt23h    dq ?    ;Int 23h handler on task switch
-    80 000000EA ????????????????    <1>     .pInt24h    dq ?    ;Int 24h handler on task switch
-    81 000000F2 ????????????????    <1>     .pInt2Eh    dq ?    ;Int 2Eh handler on task switch (for master CMD)
-    82                              <1> ;Per-process DOS state
-    83                              <1>     .sdaCopy:           ;Copy of the DOS sda for this session when not active
-    84                              <1> endstruc
-    85                              <1> 
-    86                              <1> struc mScrCap   ;Communication packet with MCON
-    87 00000000 ????                <1>     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)
-    88 00000002 ????                <1>     .wLen       dw ?    ;Length of structure (13 bytes)
-    89 00000004 ??                  <1>     .bScrNum    db ?    ;Number of screens supported by driver
-    90 00000005 ????????????????    <1>     .pDevHlp    dq ?    ;Pointer to the devHlp help routine
-    91                              <1> endstruc
+    64                              <1> THREAD_ALIVE        equ 1   ;Set if thread alive.
+    65                              <1> THREAD_DEAD         equ 2   ;Set if thread awaits reaping (a CWAIT call).
+    66                              <1> THREAD_SLEEP        equ 4   ;Set if thread asleep.
+    67                              <1> THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
+    68                              <1> 
+    69                              <1> 
+    70                              <1> ;Process control block, keeps full process state.
+    71                              <1> ;Must be aligned in size to 16 bytes.
+    72                              <1> struc pcb  
+    73                              <1> ;Process metadata
+    74 00000000 ????????            <1>     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
+    75 00000004 ????????            <1>     .hPcb       dd ?    ;Hdl to this pcb
+    76 00000008 ????????            <1>     .hParPcb    dd ?    ;Handle to the parent pcb
+    77 0000000C ????????            <1>     .dCsid      dd ?    ;CSID of this task chain (id of root program)
+    78 00000010 ????                <1>     .wFlags     dw ?    ;Task flags
+    79                              <1> ;PTDA block, will eventually be replaced to a ptr to the 
+    80                              <1> ; main thread ptda.
+    81 00000012 <res Eh>            <1>     alignb 10h
+    82 00000020 <res BAh>           <1>     .sPtda      db ptda_size dup (?) ;Thread 0's PTDA
+    83                              <1> ;Interrupt handles for replacing on task swap
+    84 000000DA ????????????????    <1>     .pInt22h    dq ?    ;Int 22h handler on task switch
+    85 000000E2 ????????????????    <1>     .pInt23h    dq ?    ;Int 23h handler on task switch
+    86 000000EA ????????????????    <1>     .pInt24h    dq ?    ;Int 24h handler on task switch
+    87 000000F2 ????????????????    <1>     .pInt2Eh    dq ?    ;Int 2Eh handler on task switch (for master CMD)
+    88                              <1> ;Per-process DOS state
+    89                              <1>     .sdaCopy:           ;Copy of the DOS sda for this session when not active
+    90                              <1> endstruc
+    91                              <1> 
     92                              <1> 
-    93                              <1> magicCode equ 7100h ;Scancode/ASCII code of ALT+F10
+    93                              <1> ;Communication packet with MCON
     94                              <1> 
-    95                              <1> DevHlp_ConsInputFilter  equ 5
-    96                              <1> DevHlp_Signal_SM        equ 7
-    97                              <1> DevHlp_ProcBlock        equ 9
-    98                              <1> DevHlp_ProcRun          equ 10
-    99                              <1> DevHlp_GetDOSVar        equ 16
-   100                              <1> 
+    95                              <1> struc mScrCap  
+    96 00000000 ????                <1>     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)
+    97 00000002 ????                <1>     .wLen       dw ?    ;Length of structure (13 bytes)
+    98 00000004 ??                  <1>     .bScrNum    db ?    ;Number of screens supported by driver
+    99 00000005 ????????????????    <1>     .pDevHlp    dq ?    ;Pointer to the devHlp help routine
+   100                              <1> endstruc
    101                              <1> 
-   102                              <1> ;BIOS Equates go here
-   103                              <1> EOI         equ 20h
-   104                              <1> pic1cmd     equ 20h
-   105                              <1> 
-   106                              <1> PITbase     equ 40h
-   107                              <1> PIT0        equ PITbase
-   108                              <1> PIT1        equ PITbase + 1
-   109                              <1> PIT2        equ PITbase + 2
-   110                              <1> PITcmd      equ PITbase + 3
-   111                              <1> 
-   112                              <1> timerInt    equ 0F0h    ;Change if we change this in BIOS!!
+   102                              <1> magicCode equ 7100h ;Scancode/ASCII code of ALT+F10
+   103                              <1> 
+   104                              <1> DevHlp_ConsInputFilter  equ 5
+   105                              <1> DevHlp_Signal_SM        equ 7
+   106                              <1> DevHlp_ProcBlock        equ 9
+   107                              <1> DevHlp_ProcRun          equ 10
+   108                              <1> DevHlp_GetDOSVar        equ 16
+   109                              <1> 
+   110                              <1> 
+   111                              <1> ;BIOS Equates go here
+   112                              <1> EOI         equ 20h
+   113                              <1> pic1cmd     equ 20h
+   114                              <1> 
+   115                              <1> PITbase     equ 40h
+   116                              <1> PIT0        equ PITbase
+   117                              <1> PIT1        equ PITbase + 1
+   118                              <1> PIT2        equ PITbase + 2
+   119                              <1> PITcmd      equ PITbase + 3
+   120                              <1> 
+   121                              <1> timerInt    equ 0F0h    ;Change if we change this in BIOS!!
      4                                  %include "./src/inc/dosStruc.inc"
      1                              <1> ;Structures and equates coming from DOS
      2                              <1> 
@@ -736,7 +745,7 @@
     55 00000092 4889E2              <1>     mov rdx, rsp    ;Allocated structure on the stack
     56 00000095 66C7020001          <1>     mov word [rdx + mScrCap.wVer], 0100h
     57 0000009A 66C742020D00        <1>     mov word [rdx + mScrCap.wLen], mScrCap_size
-    58 000000A0 488D1DB3030000      <1>     lea rbx, devHlp
+    58 000000A0 488D1D0C040000      <1>     lea rbx, devHlp
     59 000000A7 48895A05            <1>     mov qword [rdx + mScrCap.pDevHlp], rbx
     60 000000AB B80C440000          <1>     mov eax, 440Ch
     61 000000B0 31DB                <1>     xor ebx, ebx    ;CON handle (STDIN)!
@@ -751,7 +760,7 @@
     70 000000D0 39C3                <1>     cmp ebx, eax
     71 000000D2 0F47D8              <1>     cmova ebx, eax  ;Maximum supported session number is 7
     72 000000D5 FFCB                <1>     dec ebx         ;Turn into an index
-    73 000000D7 891D(20000000)      <1>     mov dword [dMaxSesIndx], ebx   ;Store the max session number index.
+    73 000000D7 891D(28000000)      <1>     mov dword [dMaxSesIndx], ebx   ;Store the max session number index.
     74                              <1> ;Restore the stack now!
     75 000000DD 5E                  <1>     pop rsi  
     76 000000DE 5E                  <1>     pop rsi
@@ -761,275 +770,298 @@
     80 000000E3 488D15(7A000000)    <1>     lea rdx, noScreenStr
     81 000000EA E923FFFFFF          <1>     jmp exitBad
     82                              <1> screensOk:
-    83                              <1> ;Get the size of the SDA to know how big a pcb actually is.
-    84                              <1> ;    breakpoint
-    85 000000EF B8065D0000          <1>     mov eax, 5D06h
-    86 000000F4 CD21                <1>     int 21h
-    87 000000F6 488935(08000000)    <1>     mov qword [pDosSda], rsi
-    88 000000FD 890D(1C000000)      <1>     mov dword [dSdaLen], ecx    ;Save the larger value :)
-    89 00000103 81C1FA000000        <1>     add ecx, pcb_size
-    90 00000109 890D(18000000)      <1>     mov dword [dPcbLen], ecx   ;Save the max length of a pcb.
-    91 0000010F 89C8                <1>     mov eax, ecx
-    92 00000111 FFC3                <1>     inc ebx     ;Add 1 to get number of sessions 
-    93 00000113 F7E3                <1>     mul ebx     ;Multiply number of sessions by the size of pcb
-    94 00000115 050F000000          <1>     add eax, 0Fh
-    95 0000011A C1E804              <1>     shr eax, 4  ;Round result up by a paragraph, turn into number of paragraphs
-    96 0000011D 89C3                <1>     mov ebx, eax    ;Put number of paragraphs into ebx
-    97 0000011F B800480000          <1>     mov eax, 4800h
-    98 00000124 CD21                <1>     int 21h
-    99 00000126 7318                <1>     jnc spaceOk
-   100 00000128 488D15(9B000000)    <1>     lea rdx, noMemStr
-   101                              <1> exitMcon:
-   102 0000012F B80C440000          <1>     mov eax, 440Ch  ;Generic IOCTL
-   103 00000134 B948030000          <1>     mov ecx, 0348h  ;Deinstall mtask capabilities from CON
-   104 00000139 CD21                <1>     int 21h
-   105 0000013B E9D2FEFFFF          <1>     jmp exitBad
-   106                              <1> spaceOk:
-   107 00000140 50                  <1>     push rax        ;Save the pointer to the allocated block!
-   108 00000141 4889C7              <1>     mov rdi, rax    ;Clear the space we just allocated!
-   109 00000144 C1E304              <1>     shl ebx, 4
-   110 00000147 89D9                <1>     mov ecx, ebx  ;Get the number of bytes we allocated
-   111 00000149 31C0                <1>     xor eax, eax
-   112 0000014B F3AA                <1>     rep stosb
-   113 0000014D 5F                  <1>     pop rdi         ;Get back the allocated block pointer!
-   114 0000014E 48893D(10000000)    <1>     mov qword [pPcbTbl], rdi    ;Store the pointer to the pcbTbl here
-   115 00000155 48893D(39000000)    <1>     mov qword [pCurThread], rdi    ;The session manager is the current task
-   116 0000015C C705(35000000)0000- <1>     mov dword [dCurThread], SM_SESSION
-   116 00000164 0000                <1>
-   117                              <1> ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
-   118                              <1> ;    breakpoint
-   119 00000166 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy]
-   120 0000016D 8B0D(1C000000)      <1>     mov ecx, dword [dSdaLen]
-   121 00000173 F3A4                <1>     rep movsb   ;Copy over the SDA as it stands now, in peacetime!
-   122                              <1> 
-   123                              <1> ;Now launch dMaxSesIndx copies of COMMAND.COM.
-   124 00000175 B800190000          <1>     mov eax, 1900h  ;Get in AL the current drive (0=A, ...)
-   125 0000017A CD21                <1>     int 21h
-   126 0000017C 0441                <1>     add al, "A"
-   127 0000017E 8805(04000000)      <1>     mov byte [dfltShell], al    
-   128 00000184 8805(13000000)      <1>     mov byte [dfltShell2], al   ;Store on the backup shell too
-   129 0000018A 31C9                <1>     xor ecx, ecx    ;Default search attributes
-   130 0000018C 488D15(04000000)    <1>     lea rdx, dfltShell
-   131 00000193 B8004E0000          <1>     mov eax, 4E00h  ;Find First
-   132 00000198 CD21                <1>     int 21h
-   133 0000019A 731C                <1>     jnc .shellFnd
-   134 0000019C 488D15(13000000)    <1>     lea rdx, dfltShell2
-   135 000001A3 B8004E0000          <1>     mov eax, 4E00h  ;Find First
-   136 000001A8 CD21                <1>     int 21h
-   137 000001AA 730C                <1>     jnc .shellFnd
-   138 000001AC 488D15(D4000000)    <1>     lea rdx, noCmdStr
-   139 000001B3 E977FFFFFF          <1>     jmp exitMcon
-   140                              <1> .shellFnd:
-   141 000001B8 488915(24000000)    <1>     mov qword [pCmdShell], rdx    ;Save the string to the program to spawn
-   142                              <1> 
-   143                              <1> ;Setup this Int 22h. If the COMMAND.COM of a session exits, then 
-   144                              <1> ; this handler is executed. COMMAND.COM when loaded as /P will override 
-   145                              <1> ; this in both the IDT and in its own PSP so this is very much for any
-   146                              <1> ; early accidents. Eventually, will replace this with a routine that 
-   147                              <1> ; tries to launch a new instance of the program specified in the sm.ini 
-   148                              <1> ; config file.
-   149 000001BF 488D1538090000      <1>     lea rdx, i22hHdlr   ;Install the tmp Int 22h handler!
-   150 000001C6 B822250000          <1>     mov eax, 2522h
-   151 000001CB CD21                <1>     int 21h
-   152                              <1> 
-   153 000001CD 488D1545090000      <1>     lea rdx, interruptExit  
-   154 000001D4 B82E250000          <1>     mov eax, 252Eh  ;Eliminate any COMMAND.COM hook that might be present!
-   155 000001D9 CD21                <1>     int 21h
-   156                              <1> 
-   157                              <1> ;Now we spawn each task one by one.
-   158                              <1> ;After each spawn, we copy the SDA into the pcb for that task.
-   159                              <1> ;This way, each task has the right current psp, dta, drive and dos state.
-   160                              <1> ;After each spawn, pull the rax value from the child stack, replacing
-   161                              <1> ; it with the rip value to start program execution. 
-   162                              <1> ;Place 0202h flags, PSPptr in r8 and r9 and rax in rax on the register stack.
-   163                              <1> 
-   164                              <1> ;Prepare the sda copy pointer
-   165                              <1> ;    breakpoint
-   166 000001DB 488B3D(10000000)    <1>     mov rdi, qword [pPcbTbl]
-   167 000001E2 8B0D(18000000)      <1>     mov ecx, dword [dPcbLen]
-   168 000001E8 4801CF              <1>     add rdi, rcx    ;Go to the first user task PCB
-   169                              <1> 
-   170 000001EB 4881EC30000000      <1>     sub rsp, loadProg_size  ;Make space for the loadprog structure
-   171 000001F2 4889E5              <1>     mov rbp, rsp
-   172 000001F5 B901000000          <1>     mov ecx, 1  ;Start counting task numbers from 1
-   173                              <1> ;Now setup the loadProgBlock on the stack
-   174 000001FA 31C0                <1>     xor eax, eax
-   175 000001FC 48894500            <1>     mov qword [rbp + loadProg.pEnv], rax    ;Copy the parent environment!
-   176 00000200 488D05(26000000)    <1>     lea rax, cmdTail
-   177 00000207 48894508            <1>     mov qword [rbp + loadProg.pCmdLine], rax
-   178 0000020B 498D405C            <1>     lea rax, qword [r8 + psp.fcb1]
-   179 0000020F 48894510            <1>     mov qword [rbp + loadProg.pfcb1], rax
-   180 00000213 498D406C            <1>     lea rax, qword [r8 + psp.fcb2]
-   181 00000217 48894518            <1>     mov qword [rbp + loadProg.pfcb2], rax
-   182                              <1> ;   breakpoint
-   183                              <1> loadLp:
-   184 0000021B 31C0                <1>     xor eax, eax
-   185 0000021D 48894520            <1>     mov qword [rbp + loadProg.initRSP], rax ;Reset the return values to 0
-   186 00000221 48894528            <1>     mov qword [rbp + loadProg.initRIP], rax
-   187 00000225 488B15(24000000)    <1>     mov rdx, qword [pCmdShell]
-   188 0000022C 4889EB              <1>     mov rbx, rbp
-   189 0000022F B8014B0000          <1>     mov eax, 4B01h
-   190 00000234 CD21                <1>     int 21h
-   191 00000236 7316                <1>     jnc .loadOk
-   192                              <1> .badLoad:
-   193 00000238 488D15(08010000)    <1>     lea rdx, noExecStr
-   194                              <1>     ;Here we have to unwind the programs, set Int 22h in each PSP 
-   195                              <1>     ; to an appropriate loaction, copy the SDA into DOS, and call EXIT.
-   196                              <1>     ;For now, we cause a memory leak and proceed.
-   197 0000023F 4C89C3              <1>     mov rbx, r8     ;Move SM PSP pointer int rbx
-   198 00000242 B800500000          <1>     mov eax, 5000h  ;Reset the current PSP back to SM
-   199 00000247 CD21                <1>     int 21h
-   200 00000249 E9E1FEFFFF          <1>     jmp exitMcon
-   201                              <1> .loadOk:
-   202                              <1> ;rdi points to the pcb for this task
-   203 0000024E 488D05A9080000      <1>     lea rax, i22hHdlr
-   204 00000255 488987DA000000      <1>     mov qword [rdi + pcb.pInt22h], rax
-   205 0000025C B823350000          <1>     mov eax, 3523h  ;Get the default Int 23h handler!
-   206 00000261 CD21                <1>     int 21h
-   207 00000263 48899FE2000000      <1>     mov qword [rdi + pcb.pInt23h], rbx
-   208 0000026A B824350000          <1>     mov eax, 3524h  ;Get the default Int 24h handler!
-   209 0000026F CD21                <1>     int 21h
-   210 00000271 48899FEA000000      <1>     mov qword [rdi + pcb.pInt24h], rbx
-   211 00000278 488D1D9A080000      <1>     lea rbx, interruptExit
-   212 0000027F 48899FF2000000      <1>     mov qword [rdi + pcb.pInt2Eh], rbx
-   213                              <1> ;   breakpoint
-   214 00000286 488B5D20            <1>     mov rbx, qword [rbp + loadProg.initRSP]
-   215 0000028A 48895F52            <1>     mov qword [rdi + pcb.sPtda + ptda.qRSP], rbx ;Store the Stack value!
-   216 0000028E 488B4528            <1>     mov rax, qword [rbp + loadProg.initRIP] 
-   217 00000292 488703              <1>     xchg rax, qword [rbx]   ;Swap the RIP value with the FCB words on the stack!
-   218 00000295 488987D2000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 15*8], rax ;rax on regstack!
-   219 0000029C B800510000          <1>     mov eax, 5100h  ;Get Current PSP in rbx
-   220 000002A1 CD21                <1>     int 21h
-   221 000002A3 48899F92000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 7*8], rbx  ;PSP ptr @ r9
-   222 000002AA 48899F9A000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 8*8], rbx  ;PSP ptr @ r8
-   223 000002B1 48C7475A02020000    <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl], 0202h      ;Flags!
-   224                              <1> ;Make sure to save the screen number assigned to this task!
-   225 000002B9 890F                <1>     mov dword [rdi + pcb.hScrnNum], ecx    ;Save the screen number of task!
-   226                              <1> ;Now copy the SDA into the pcb SDA
-   227 000002BB 51                  <1>     push rcx
-   228 000002BC 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
-   229 000002C3 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy]
-   230 000002CA 8B0D(1C000000)      <1>     mov ecx, dword [dSdaLen]
-   231 000002D0 F3A4                <1>     rep movsb   ;rdi now points to the next pcb
-   232 000002D2 59                  <1>     pop rcx
-   233                              <1> ;Now reset the PSP back so that each process is a proper child of SM!
-   234 000002D3 B800500000          <1>     mov eax, 5000h  ;Set current PSP
-   235 000002D8 4C89C3              <1>     mov rbx, r8
-   236 000002DB CD21                <1>     int 21h
-   237 000002DD FFC1                <1>     inc ecx
-   238 000002DF 3B0D(20000000)      <1>     cmp ecx, dword [dMaxSesIndx]
-   239 000002E5 0F8630FFFFFF        <1>     jbe loadLp
-   240                              <1> 
-   241 000002EB 4881C430000000      <1>     add rsp, loadProg_size  ;Reclaim the allocation in the end
-   242                              <1> 
-   243                              <1> ;Set ourselves to be our own parent now!
-   244 000002F2 4D894022            <1>     mov qword [r8 + psp.parentPtr], r8
-   245                              <1> ;Setup the default int 22h and int 23h of the SM in the PSP since we are our
-   246                              <1> ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
-   247                              <1> ; shell.
-   248 000002F6 488B35(10000000)    <1>     mov rsi, qword [pPcbTbl]   ;Get the PCB table entry of SM
-   249 000002FD 488D150A080000      <1>     lea rdx, i22hShell
-   250 00000304 4989500A            <1>     mov qword [r8 + psp.oldInt22h], rdx
-   251 00000308 488996DA000000      <1>     mov qword [rsi + pcb.pInt22h], rdx
-   252 0000030F 488D15FD070000      <1>     lea rdx, i23hHdlr
-   253 00000316 49895012            <1>     mov qword [r8 + psp.oldInt23h], rdx
-   254 0000031A 488996E2000000      <1>     mov qword [rsi + pcb.pInt23h], rdx
-   255 00000321 488D15EF070000      <1>     lea rdx, i24hHdlr
-   256 00000328 4989501A            <1>     mov qword [r8 + psp.oldInt24h], rdx
-   257 0000032C 488996EA000000      <1>     mov qword [rsi + pcb.pInt24h], rdx
-   258                              <1> ;Now we gotta setup RIP, RSP, flags and regs for the Session Manager
-   259 00000333 488D15(00000000)    <1>     lea rdx, sm$shlTOS
-   260 0000033A 48895652            <1>     mov qword [rsi + pcb.sPtda + ptda.qRSP], rdx
-   261 0000033E 488D1517060000      <1>     lea rdx, shellMain  ;We enter at shellMain (interrupts on, and rsp ok)
-   262 00000345 488996D2000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 15*8], rdx ;Set RIP
-   263 0000034C 4C898E92000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 7*8], r9  ;PSP ptr @ r9
-   264 00000353 4C89869A000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 8*8], r8  ;PSP ptr @ r8
-   265 0000035A 48C7465A02020000    <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl], 0202h     ;flags
-   266                              <1> 
-   267                              <1> ;Now put every task into middle priority list (schedule 15)!
-   268 00000362 B00F                <1>     mov al, 15
-   269 00000364 E8BA050000          <1>     call getSchedHeadPtr    ;Get the schedhead ptr in rsi
-   270 00000369 E8D2050000          <1>     call getScheduleLock    ;Lock the schedule pointed to by rsi
-   271                              <1> ;Now add all the tasks's we've just created to this list
-   272 0000036E 31C9                <1>     xor ecx, ecx
-   273 00000370 E88D050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task 0
-   274 00000375 E8A4050000          <1>     call getThreadPtr   ;Get a pointer to the first thread block of rdi in rbp
-   275 0000037A FF4601              <1>     inc dword [rsi + schedHead.dNumEntry]
-   276 0000037D 48896E05            <1>     mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
-   277 00000381 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
-   278                              <1> schedLp:
-   279 00000385 FFC1                <1>     inc ecx
-   280 00000387 3B0D(20000000)      <1>     cmp ecx, dword [dMaxSesIndx]
-   281 0000038D 771B                <1>     ja schedExit
-   282 0000038F E86E050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task ecx
-   283 00000394 E885050000          <1>     call getThreadPtr   ;Get ptr to the first ptda of rdi in rbp
-   284 00000399 488B7E0D            <1>     mov rdi, qword [rsi + schedHead.pSchedTail] ;Get the last entry in the sched
-   285 0000039D 48896F1A            <1>     mov qword [rdi + ptda.pNSlepPtda], rbp    ;rbp comes after this 
-   286 000003A1 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;This ptda is the new last ptda
-   287 000003A5 FF4601              <1>     inc dword [rsi + schedHead.dNumEntry]       ;Added a new element to schedule
-   288 000003A8 EBDB                <1>     jmp short schedLp
-   289                              <1> schedExit:
-   290 000003AA E8A2050000          <1>     call releaseScheduleLock
-   291                              <1> 
-   292 000003AF EB2C                <1>     jmp short i2ahJmp   ;Skip the timer stuff
-   293                              <1> ;Now setup the timer infrastructure for the timer interrupt.
-   294                              <1> ;Start by replacing the old timer interrupt with our better one.
-   295 000003B1 FA                  <1>     cli         ;Start by ensuring interrupts are off!
-   296 000003B2 B8F0350000          <1>     mov eax, 3500h | timerInt  ;Get ptr to timer interrupt in rbx
-   297 000003B7 CD21                <1>     int 21h
-   298 000003B9 48891D(0E030000)    <1>     mov qword [pOldTimer], rbx
-   299 000003C0 488D155F010000      <1>     lea rdx, timerIrq ;Get the pointer to the new handler
-   300 000003C7 B8F0250000          <1>     mov eax, 2500h | timerInt  ;Set ptr for timer interrupt
-   301 000003CC CD21                <1>     int 21h
-   302                              <1> 
-   303                              <1> ;Now we set the timer to trigger and interrupt every ms.
-   304 000003CE B036                <1>     mov al, 36h     ;Channel 0, same settings as BIOS
-   305 000003D0 E643                <1>     out PITcmd, al
-   306                              <1>  
-   307 000003D2 B8A9040000          <1>     mov eax, 1193   ;Divisor to get frequency of 1000.15Hz
-   308 000003D7 E640                <1>     out PIT0, al    ;Set low byte of PIT reload value
-   309 000003D9 88E0                <1>     mov al, ah      ;ax = high 8 bits of reload value
-   310 000003DB E640                <1>     out PIT0, al    
-   311                              <1> i2ahJmp:
-   312                              <1> ;Now setup the Int 2Ah infrastructure.
-   313 000003DD 488D1590010000      <1>     lea rdx, i2AhDisp
-   314 000003E4 B82A250000          <1>     mov eax, 252Ah
-   315 000003E9 CD21                <1>     int 21h
-   316                              <1> ;Patch the DOS kernel to call Int 2Ah correctly.
-   317                              <1> ;Go in reverse from rsi which points to the DOS SDA
-   318 000003EB 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
-   319 000003F2 488D5EFF            <1>     lea rbx, qword [rsi - 1]
-   320 000003F6 488B7BF8            <1>     mov rdi, qword [rbx - 8]
-   321 000003FA C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
-   322 000003FD 488B7BF0            <1>     mov rdi, qword [rbx - 16]
-   323 00000401 C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
-   324 00000404 488B7BE8            <1>     mov rdi, qword [rbx - 24]
-   325 00000408 C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
-   326 0000040B 488B7BE0            <1>     mov rdi, qword [rbx - 32]
-   327 0000040F C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
-   328                              <1> ;Now we are ready to jump!
-   329                              <1> 
-   330                              <1> ;
-   331                              <1> ; TMP TMP TMP TMP TMP TMP TMP TMP
-   332                              <1> ;
-   333 00000412 488D1509000000      <1>     lea rdx, errorStr
-   334 00000419 B800090000          <1>     mov eax, 0900h
-   335 0000041E CD21                <1>     int 21h
-   336                              <1> lp:
-   337 00000420 EBFE                <1>     jmp short lp
-   338 00000422 53657373696F6E204D- <1> errorStr db "Session Manager not ready yet. System halted!"
-   338 0000042B 616E61676572206E6F- <1>
-   338 00000434 742072656164792079- <1>
-   338 0000043D 65742E205379737465- <1>
-   338 00000446 6D2068616C74656421  <1>
-   339                              <1> ;
-   340                              <1> ; TMP TMP TMP TMP TMP TMP TMP TMP
-   341                              <1> ;
-   342                              <1> 
-   343                              <1> ;Actual exit code below
-   344 0000044F FB                  <1>     sti         ;Ensure we return interrupts on!
-   345 00000450 B901000000          <1>     mov ecx, 1  ;Start COMMAND.COM on screen 1
-   346 00000455 E927060000          <1>     jmp swapScreen
+    83                              <1> ;Now we set the maximum number of tasks
+    84 000000EF C705(24000000)2000- <1>     mov dword [dMaxTask], MAX_TASK
+    84 000000F7 0000                <1>
+    85                              <1> ;Get the size of the SDA to know how big a pcb actually is.
+    86 000000F9 B8065D0000          <1>     mov eax, 5D06h
+    87 000000FE CD21                <1>     int 21h
+    88 00000100 488935(08000000)    <1>     mov qword [pDosSda], rsi
+    89 00000107 890D(14000000)      <1>     mov dword [dSdaLen], ecx   
+    90 0000010D 8915(10000000)      <1>     mov dword [dSdaLenMin], edx
+    91 00000113 81C1FA000000        <1>     add ecx, pcb_size
+    92                              <1> ;Round up the pcb size to a 16-byte boundary.
+    93 00000119 81C10F000000        <1>     add ecx, 0Fh
+    94 0000011F C1E904              <1>     shr ecx, 4
+    95 00000122 C1E104              <1>     shl ecx, 4
+    96 00000125 890D(20000000)      <1>     mov dword [dPcbLen], ecx   ;Save the max length of a pcb.
+    97                              <1> ;Now lets allocate a soth for pcbs
+    98 0000012B 89C8                <1>     mov eax, ecx    
+    99 0000012D 8B1D(24000000)      <1>     mov ebx, dword [dMaxTask]   ;Get the maximum number of tasks
+   100 00000133 F7E3                <1>     mul ebx     ;Multiply size of pcb with max number of tasks.
+   101                              <1> 
+   102 00000135 0510000000          <1>     add eax, soth_size  ;Add the SOTH header size too
+   103 0000013A 050F000000          <1>     add eax, 0Fh    ;Round result up by a paragraph
+   104 0000013F C1E804              <1>     shr eax, 4      ;Turn into number of paragraphs
+   105 00000142 89C3                <1>     mov ebx, eax
+   106 00000144 B800480000          <1>     mov eax, 4800h
+   107 00000149 CD21                <1>     int 21h
+   108 0000014B 7318                <1>     jnc spaceOk
+   109 0000014D 488D15(9B000000)    <1>     lea rdx, noMemStr
+   110                              <1> exitMcon:
+   111 00000154 B80C440000          <1>     mov eax, 440Ch  ;Generic IOCTL
+   112 00000159 B948030000          <1>     mov ecx, 0348h  ;Deinstall mtask capabilities from CON
+   113 0000015E CD21                <1>     int 21h
+   114 00000160 E9ADFEFFFF          <1>     jmp exitBad
+   115                              <1> spaceOk:
+   116 00000165 50                  <1>     push rax        ;Save the pointer to the allocated block!
+   117 00000166 4889C7              <1>     mov rdi, rax    ;Clear the space we just allocated!
+   118 00000169 C1E304              <1>     shl ebx, 4
+   119 0000016C 89D9                <1>     mov ecx, ebx  ;Get the number of bytes we allocated
+   120 0000016E 31C0                <1>     xor eax, eax
+   121 00000170 F3AA                <1>     rep stosb
+   122 00000172 5F                  <1>     pop rdi         ;Get back the allocated block pointer!
+   123                              <1> ;Now setup the SOTH with the right flags!
+   124 00000173 48C707FFFFFFFF      <1>     mov qword [rdi + soth.pNextSoth], -1    ;End of chain marker!
+   125 0000017A 8B0D(24000000)      <1>     mov ecx, dword [dMaxTask]
+   126 00000180 894F08              <1>     mov dword [rdi + soth.dNumEntry], ecx   ;This table saves all tasks.
+   127 00000183 66C7470C0100        <1>     mov word [rdi + soth.wObjType], OBJ_PCB ;We use this for PCBs
+   128 00000189 8B0D(20000000)      <1>     mov ecx, dword [dPcbLen]
+   129 0000018F 66894F0E            <1>     mov word [rdi + soth.wObjectSz], cx     ;This is the object size
+   130 00000193 48893D(61000000)    <1>     mov qword [pObjTblHdr], rdi ;Save the pointer to the first object table here
+   131                              <1> ;Now set up the PCB Table information
+   132 0000019A 48893D(18000000)    <1>     mov qword [pPcbTbl], rdi    ;Store ptr to the first pcb soth here
+   133 000001A1 4881C710000000      <1>     add rdi, soth_size          ;Go to the first entry here
+   134 000001A8 48893D(41000000)    <1>     mov qword [pCurThread], rdi ;The session manager is the current task
+   135 000001AF C705(3D000000)0000- <1>     mov dword [dCurThread], SM_SESSION
+   135 000001B7 0000                <1>
+   136                              <1> ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
+   137 000001B9 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy]
+   138 000001C0 8B0D(14000000)      <1>     mov ecx, dword [dSdaLen]
+   139 000001C6 F3A4                <1>     rep movsb   ;Copy over the SDA as it stands now, in peacetime!
+   140                              <1> 
+   141                              <1> ;Now launch dMaxSesIndx copies of COMMAND.COM.
+   142 000001C8 B800190000          <1>     mov eax, 1900h  ;Get in AL the current drive (0=A, ...)
+   143 000001CD CD21                <1>     int 21h
+   144 000001CF 0441                <1>     add al, "A"
+   145 000001D1 8805(04000000)      <1>     mov byte [dfltShell], al    
+   146 000001D7 8805(13000000)      <1>     mov byte [dfltShell2], al   ;Store on the backup shell too
+   147 000001DD 31C9                <1>     xor ecx, ecx    ;Default search attributes
+   148 000001DF 488D15(04000000)    <1>     lea rdx, dfltShell
+   149 000001E6 B8004E0000          <1>     mov eax, 4E00h  ;Find First
+   150 000001EB CD21                <1>     int 21h
+   151 000001ED 731C                <1>     jnc .shellFnd
+   152 000001EF 488D15(13000000)    <1>     lea rdx, dfltShell2
+   153 000001F6 B8004E0000          <1>     mov eax, 4E00h  ;Find First
+   154 000001FB CD21                <1>     int 21h
+   155 000001FD 730C                <1>     jnc .shellFnd
+   156 000001FF 488D15(D4000000)    <1>     lea rdx, noCmdStr
+   157 00000206 E949FFFFFF          <1>     jmp exitMcon
+   158                              <1> .shellFnd:
+   159 0000020B 488915(2C000000)    <1>     mov qword [pCmdShell], rdx    ;Save the string to the program to spawn
+   160                              <1> 
+   161                              <1> ;Setup this Int 22h. If the COMMAND.COM of a session exits, then 
+   162                              <1> ; this handler is executed. COMMAND.COM when loaded as /P will override 
+   163                              <1> ; this in both the IDT and in its own PSP so this is very much for any
+   164                              <1> ; early accidents. Eventually, will replace this with a routine that 
+   165                              <1> ; tries to launch a new instance of the program specified in the sm.ini 
+   166                              <1> ; config file.
+   167 00000212 488D1595090000      <1>     lea rdx, i22hHdlr   ;Install the tmp Int 22h handler!
+   168 00000219 B822250000          <1>     mov eax, 2522h
+   169 0000021E CD21                <1>     int 21h
+   170                              <1> 
+   171 00000220 488D15A2090000      <1>     lea rdx, interruptExit  
+   172 00000227 B82E250000          <1>     mov eax, 252Eh  ;Eliminate any COMMAND.COM hook that might be present!
+   173 0000022C CD21                <1>     int 21h
+   174                              <1> 
+   175                              <1> ;Now we spawn each task one by one.
+   176                              <1> ;After each spawn, we copy the SDA into the pcb for that task.
+   177                              <1> ;This way, each task has the right current psp, dta, drive and dos state.
+   178                              <1> ;After each spawn, pull the rax value from the child stack, replacing
+   179                              <1> ; it with the rip value to start program execution. 
+   180                              <1> ;Place 0202h flags, PSPptr in r8 and r9 and rax in rax on the register stack.
+   181                              <1> 
+   182                              <1> ;Prepare the sda copy pointer
+   183 0000022E B901000000          <1>     mov ecx, 1      ;Goto the first pcb 
+   184 00000233 E862070000          <1>     call getPcbPtr  ;Get the ptr in rdi
+   185                              <1> 
+   186 00000238 4881EC30000000      <1>     sub rsp, loadProg_size  ;Make space for the loadprog structure
+   187 0000023F 4889E5              <1>     mov rbp, rsp
+   188 00000242 B901000000          <1>     mov ecx, 1  ;Start counting task numbers from 1
+   189                              <1> ;Now setup the loadProgBlock on the stack
+   190 00000247 31C0                <1>     xor eax, eax
+   191 00000249 48894500            <1>     mov qword [rbp + loadProg.pEnv], rax    ;Copy the parent environment!
+   192 0000024D 488D05(26000000)    <1>     lea rax, cmdTail
+   193 00000254 48894508            <1>     mov qword [rbp + loadProg.pCmdLine], rax
+   194 00000258 498D405C            <1>     lea rax, qword [r8 + psp.fcb1]
+   195 0000025C 48894510            <1>     mov qword [rbp + loadProg.pfcb1], rax
+   196 00000260 498D406C            <1>     lea rax, qword [r8 + psp.fcb2]
+   197 00000264 48894518            <1>     mov qword [rbp + loadProg.pfcb2], rax
+   198                              <1> loadLp:
+   199 00000268 31C0                <1>     xor eax, eax
+   200 0000026A 48894520            <1>     mov qword [rbp + loadProg.initRSP], rax ;Reset the return values to 0
+   201 0000026E 48894528            <1>     mov qword [rbp + loadProg.initRIP], rax
+   202 00000272 488B15(2C000000)    <1>     mov rdx, qword [pCmdShell]
+   203 00000279 4889EB              <1>     mov rbx, rbp
+   204 0000027C B8014B0000          <1>     mov eax, 4B01h
+   205 00000281 CD21                <1>     int 21h
+   206 00000283 7316                <1>     jnc .loadOk
+   207                              <1> .badLoad:
+   208 00000285 488D15(08010000)    <1>     lea rdx, noExecStr
+   209                              <1>     ;Here we have to unwind the programs, set Int 22h in each PSP 
+   210                              <1>     ; to an appropriate loaction, copy the SDA into DOS, and call EXIT.
+   211                              <1>     ;For now, we cause a memory leak and proceed.
+   212 0000028C 4C89C3              <1>     mov rbx, r8     ;Move SM PSP pointer int rbx
+   213 0000028F B800500000          <1>     mov eax, 5000h  ;Reset the current PSP back to SM
+   214 00000294 CD21                <1>     int 21h
+   215 00000296 E9B9FEFFFF          <1>     jmp exitMcon
+   216                              <1> .loadOk:
+   217                              <1> ;rdi points to the pcb for this task
+   218 0000029B 488D050C090000      <1>     lea rax, i22hHdlr
+   219 000002A2 488987DA000000      <1>     mov qword [rdi + pcb.pInt22h], rax
+   220 000002A9 B823350000          <1>     mov eax, 3523h  ;Get the default Int 23h handler!
+   221 000002AE CD21                <1>     int 21h
+   222 000002B0 48899FE2000000      <1>     mov qword [rdi + pcb.pInt23h], rbx
+   223 000002B7 B824350000          <1>     mov eax, 3524h  ;Get the default Int 24h handler!
+   224 000002BC CD21                <1>     int 21h
+   225 000002BE 48899FEA000000      <1>     mov qword [rdi + pcb.pInt24h], rbx
+   226 000002C5 488D1DFD080000      <1>     lea rbx, interruptExit
+   227 000002CC 48899FF2000000      <1>     mov qword [rdi + pcb.pInt2Eh], rbx
+   228                              <1> ;   breakpoint
+   229 000002D3 488B5D20            <1>     mov rbx, qword [rbp + loadProg.initRSP]
+   230 000002D7 48895F52            <1>     mov qword [rdi + pcb.sPtda + ptda.qRSP], rbx ;Store the Stack value!
+   231 000002DB 488B4528            <1>     mov rax, qword [rbp + loadProg.initRIP] 
+   232 000002DF 488703              <1>     xchg rax, qword [rbx]   ;Swap the RIP value with the FCB words on the stack!
+   233 000002E2 488987D2000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 15*8], rax ;rax on regstack!
+   234 000002E9 B800510000          <1>     mov eax, 5100h  ;Get Current PSP in rbx
+   235 000002EE CD21                <1>     int 21h
+   236 000002F0 48899F92000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 7*8], rbx  ;PSP ptr @ r9
+   237 000002F7 48899F9A000000      <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 8*8], rbx  ;PSP ptr @ r8
+   238 000002FE 48C7475A02020000    <1>     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl], 0202h      ;Flags!
+   239                              <1> ;Make sure to save the screen number and process information!
+   240 00000306 890F                <1>     mov dword [rdi + pcb.hScrnNum], ecx     ;Save the screen number of task!
+   241 00000308 894F04              <1>     mov dword [rdi + pcb.hPcb], ecx ;This is also the count of the task!
+   242 0000030B 894F08              <1>     mov dword [rdi + pcb.hParPcb], ecx 
+   243 0000030E 894F0C              <1>     mov dword [rdi + pcb.dCsid], ecx 
+   244                              <1> 
+   245                              <1> ;Now copy the SDA into the pcb SDA
+   246 00000311 51                  <1>     push rcx
+   247 00000312 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
+   248 00000319 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy]
+   249 00000320 8B0D(14000000)      <1>     mov ecx, dword [dSdaLen]
+   250 00000326 F3A4                <1>     rep movsb   ;rdi now points to the next pcb
+   251 00000328 59                  <1>     pop rcx
+   252                              <1> ;Now reset the PSP back so that each process is a proper child of SM!
+   253 00000329 B800500000          <1>     mov eax, 5000h  ;Set current PSP
+   254 0000032E 4C89C3              <1>     mov rbx, r8
+   255 00000331 CD21                <1>     int 21h
+   256 00000333 FFC1                <1>     inc ecx
+   257 00000335 3B0D(28000000)      <1>     cmp ecx, dword [dMaxSesIndx]
+   258 0000033B 0F8627FFFFFF        <1>     jbe loadLp
+   259                              <1> 
+   260 00000341 4881C430000000      <1>     add rsp, loadProg_size  ;Reclaim the allocation in the end
+   261                              <1> 
+   262                              <1> ;Set ourselves to be our own parent now!
+   263 00000348 4D894022            <1>     mov qword [r8 + psp.parentPtr], r8
+   264                              <1> ;Setup the default int 22h and int 23h of the SM in the PSP since we are our
+   265                              <1> ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
+   266                              <1> ; shell.
+   267 0000034C 31C9                <1>     xor ecx, ecx    ;SM Hdl
+   268 0000034E E847060000          <1>     call getPcbPtr  ;Get the ptr in rdi 
+   269 00000353 4889FE              <1>     mov rsi, rdi    ;Move ptr to rsi
+   270                              <1> 
+   271 00000356 488D1561080000      <1>     lea rdx, i22hShell
+   272 0000035D 4989500A            <1>     mov qword [r8 + psp.oldInt22h], rdx
+   273 00000361 488996DA000000      <1>     mov qword [rsi + pcb.pInt22h], rdx
+   274 00000368 488D1554080000      <1>     lea rdx, i23hHdlr
+   275 0000036F 49895012            <1>     mov qword [r8 + psp.oldInt23h], rdx
+   276 00000373 488996E2000000      <1>     mov qword [rsi + pcb.pInt23h], rdx
+   277 0000037A 488D1546080000      <1>     lea rdx, i24hHdlr
+   278 00000381 4989501A            <1>     mov qword [r8 + psp.oldInt24h], rdx
+   279 00000385 488996EA000000      <1>     mov qword [rsi + pcb.pInt24h], rdx
+   280                              <1> ;Now we gotta setup RIP, RSP, flags and regs for the Session Manager
+   281 0000038C 488D15(00000000)    <1>     lea rdx, sm$shlTOS
+   282 00000393 48895652            <1>     mov qword [rsi + pcb.sPtda + ptda.qRSP], rdx
+   283 00000397 488D156E060000      <1>     lea rdx, shellMain  ;We enter at shellMain (interrupts on, and rsp ok)
+   284 0000039E 488996D2000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 15*8], rdx ;Set RIP
+   285 000003A5 4C898E92000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 7*8], r9  ;PSP ptr @ r9
+   286 000003AC 4C89869A000000      <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl + 8*8], r8  ;PSP ptr @ r8
+   287 000003B3 48C7465A02020000    <1>     mov qword [rsi + pcb.sPtda + ptda.sRegsTbl], 0202h     ;flags
+   288                              <1> 
+   289                              <1> ;Now put every task into middle priority list (schedule 15)!
+   290 000003BB B00F                <1>     mov al, 15
+   291 000003BD E811060000          <1>     call getSchedHeadPtr    ;Get the schedhead ptr in rsi
+   292 000003C2 E829060000          <1>     call getScheduleLock    ;Lock the schedule pointed to by rsi
+   293                              <1> ;Now add all the tasks's we've just created to this list
+   294 000003C7 31C9                <1>     xor ecx, ecx
+   295 000003C9 E8CC050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task 0
+   296 000003CE E8FB050000          <1>     call getThreadPtr  ;Get ptr to the first ptda of rdi in rbp
+   297 000003D3 FF4601              <1>     inc dword [rsi + schedHead.dNumEntry]
+   298 000003D6 48896E05            <1>     mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
+   299 000003DA 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
+   300                              <1> schedLp:
+   301 000003DE FFC1                <1>     inc ecx
+   302 000003E0 3B0D(28000000)      <1>     cmp ecx, dword [dMaxSesIndx]
+   303 000003E6 771B                <1>     ja schedExit
+   304 000003E8 E8AD050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task ecx
+   305 000003ED E8DC050000          <1>     call getThreadPtr   ;Get ptr to the first ptda of rdi in rbp
+   306 000003F2 488B7E0D            <1>     mov rdi, qword [rsi + schedHead.pSchedTail] ;Get the last entry in the sched
+   307 000003F6 48896F1A            <1>     mov qword [rdi + ptda.pNSlepPtda], rbp    ;rbp comes after this 
+   308 000003FA 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;This ptda is the new last ptda
+   309 000003FE FF4601              <1>     inc dword [rsi + schedHead.dNumEntry]       ;Added a new element to schedule
+   310 00000401 EBDB                <1>     jmp short schedLp
+   311                              <1> schedExit:
+   312 00000403 E8F9050000          <1>     call releaseScheduleLock
+   313                              <1> 
+   314 00000408 EB2C                <1>     jmp short i2ahJmp   ;Skip the timer stuff
+   315                              <1> ;Now setup the timer infrastructure for the timer interrupt.
+   316                              <1> ;Start by replacing the old timer interrupt with our better one.
+   317 0000040A FA                  <1>     cli         ;Start by ensuring interrupts are off!
+   318 0000040B B8F0350000          <1>     mov eax, 3500h | timerInt  ;Get ptr to timer interrupt in rbx
+   319 00000410 CD21                <1>     int 21h
+   320 00000412 48891D(1E030000)    <1>     mov qword [pOldTimer], rbx
+   321 00000419 488D1514010000      <1>     lea rdx, timerIrq ;Get the pointer to the new handler
+   322 00000420 B8F0250000          <1>     mov eax, 2500h | timerInt  ;Set ptr for timer interrupt
+   323 00000425 CD21                <1>     int 21h
+   324                              <1> 
+   325                              <1> ;Now we set the timer to trigger and interrupt every ms.
+   326 00000427 B036                <1>     mov al, 36h     ;Channel 0, same settings as BIOS
+   327 00000429 E643                <1>     out PITcmd, al
+   328                              <1>  
+   329 0000042B B8A9040000          <1>     mov eax, 1193   ;Divisor to get frequency of 1000.15Hz
+   330 00000430 E640                <1>     out PIT0, al    ;Set low byte of PIT reload value
+   331 00000432 88E0                <1>     mov al, ah      ;ax = high 8 bits of reload value
+   332 00000434 E640                <1>     out PIT0, al    
+   333                              <1> i2ahJmp:
+   334                              <1> ;Now setup the Int 2Ah infrastructure.
+   335 00000436 488D1545010000      <1>     lea rdx, i2AhDisp
+   336 0000043D B82A250000          <1>     mov eax, 252Ah
+   337 00000442 CD21                <1>     int 21h
+   338                              <1> ;Patch the DOS kernel to call Int 2Ah correctly.
+   339                              <1> ;Go in reverse from rsi which points to the DOS SDA
+   340 00000444 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
+   341 0000044B 488D5EFF            <1>     lea rbx, qword [rsi - 1]
+   342 0000044F 488B7BF8            <1>     mov rdi, qword [rbx - 8]
+   343 00000453 C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
+   344 00000456 488B7BF0            <1>     mov rdi, qword [rbx - 16]
+   345 0000045A C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
+   346 0000045D 488B7BE8            <1>     mov rdi, qword [rbx - 24]
+   347 00000461 C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
+   348 00000464 488B7BE0            <1>     mov rdi, qword [rbx - 32]
+   349 00000468 C60750              <1>     mov byte [rdi], 050h    ;Change from RET to PUSH RAX
+   350                              <1> ;Now we are ready to jump!
+   351                              <1> 
+   352                              <1> ;
+   353                              <1> ; TMP TMP TMP TMP TMP TMP TMP TMP
+   354                              <1> ;
+   355 0000046B 488D1509000000      <1>     lea rdx, errorStr
+   356 00000472 B800090000          <1>     mov eax, 0900h
+   357 00000477 CD21                <1>     int 21h
+   358                              <1> lp:
+   359 00000479 EBFE                <1>     jmp short lp
+   360 0000047B 53657373696F6E204D- <1> errorStr db "Session Manager not ready yet. System halted!"
+   360 00000484 616E61676572206E6F- <1>
+   360 0000048D 742072656164792079- <1>
+   360 00000496 65742E205379737465- <1>
+   360 0000049F 6D2068616C74656421  <1>
+   361                              <1> ;
+   362                              <1> ; TMP TMP TMP TMP TMP TMP TMP TMP
+   363                              <1> ;
+   364                              <1> 
+   365                              <1> ;Actual exit code below
+   366 000004A8 FB                  <1>     sti         ;Ensure we return interrupts on!
+   367 000004A9 B901000000          <1>     mov ecx, 1  ;Start COMMAND.COM on screen 1
+   368 000004AE E97E060000          <1>     jmp swapScreen
     10                                  %include "./src/text/disp.asm"
      1                              <1> ;------------------------------------------------------------
      2                              <1> ;All the DOSMGR dispatcher functions live here.
@@ -1043,165 +1075,108 @@
     10                              <1> devHlp:
     11                              <1> ;Dispatcher for devHlp.
     12                              <1> ;Function number passed in edx
-    13 0000045A 81FA05000000        <1>     cmp edx, DevHlp_ConsInputFilter
-    14 00000460 743C                <1>     je consInputFilter  
-    15 00000462 81FA07000000        <1>     cmp edx, DevHlp_Signal_SM
-    16 00000468 7445                <1>     je swapSes      
-    17 0000046A 81FA09000000        <1>     cmp edx, DevHlp_ProcBlock
-    18 00000470 7465                <1>     je procBlock    
-    19 00000472 81FA0A000000        <1>     cmp edx, DevHlp_ProcRun
-    20 00000478 0F84A7000000        <1>     je procRun      
-    21 0000047E 81FA10000000        <1>     cmp edx, DevHlp_GetDOSVar
-    22 00000484 7402                <1>     je getDosVar    
-    23 00000486 F9                  <1>     stc
+    13 000004B3 81FA05000000        <1>     cmp edx, DevHlp_ConsInputFilter
+    14 000004B9 7440                <1>     je consInputFilter  
+    15 000004BB 81FA07000000        <1>     cmp edx, DevHlp_Signal_SM
+    16 000004C1 7449                <1>     je swapSes      
+    17 000004C3 81FA09000000        <1>     cmp edx, DevHlp_ProcBlock
+    18 000004C9 0F84C5030000        <1>     je procBlock    
+    19 000004CF 81FA0A000000        <1>     cmp edx, DevHlp_ProcRun
+    20 000004D5 0F8407040000        <1>     je procRun      
+    21 000004DB 81FA10000000        <1>     cmp edx, DevHlp_GetDOSVar
+    22 000004E1 7402                <1>     je getDosVar    
+    23 000004E3 F9                  <1>     stc
     24                              <1>     return
-    13 00000487 C3                  <2>  ret
+    13 000004E4 C3                  <2>  ret
     25                              <1> getDosVar:
     26                              <1> ;Currently only recognise one var, eax = 0, ebx = any, ecx = 1
     27                              <1> ;Returns the pointer to the var/array in rax
-    28 00000488 85C0                <1>     test eax, eax
-    29 0000048A 7402                <1>     jz .getScrnIo
+    28 000004E5 85C0                <1>     test eax, eax
+    29 000004E7 7402                <1>     jz .getScrnIo
     30                              <1> .exitBad:
-    31 0000048C F9                  <1>     stc
+    31 000004E9 F9                  <1>     stc
     32                              <1>     return
-    13 0000048D C3                  <2>  ret
+    13 000004EA C3                  <2>  ret
     33                              <1> .getScrnIo:
-    34 0000048E 81F901000000        <1>     cmp ecx, 1  ;Is the var length one?
-    35 00000494 75F6                <1>     jne .exitBad
-    36 00000496 488D05(32000000)    <1>     lea rax, bScrnIoOk  ;Else return the pointer (and CF=NC!)
+    34 000004EB 81F901000000        <1>     cmp ecx, 1  ;Is the var length one?
+    35 000004F1 75F6                <1>     jne .exitBad
+    36 000004F3 488D05(3A000000)    <1>     lea rax, bScrnIoOk  ;Else return the pointer (and CF=NC!)
     37                              <1>     return
-    13 0000049D C3                  <2>  ret
+    13 000004FA C3                  <2>  ret
     38                              <1> consInputFilter:
     39                              <1> ;Checks if the char is to be added to the internal buffer or not!
     40                              <1> ;Currently only checks for the magic code for SM invokation.
     41                              <1> ;Input: ax=SC/ASCII char pair
     42                              <1> ;Output: ZF=NZ: char pair should be added to the internal buffer
     43                              <1> ;        ZF=ZE: char pair should NOT be added to the internal buffer
-    44 0000049E 663D0071            <1>     cmp ax, magicCode   ;If the magic char, do not add to internal buffer
+    44 000004FB 663D0071            <1>     cmp ax, magicCode   ;If the magic char, do not add to internal buffer
     45                              <1>     retne
     35                              <2> cret ne
-    17 000004A2 7401                <3>  j%-1 short %%a
+    17 000004FF 7401                <3>  j%-1 short %%a
     18                              <3>  return
-    13 000004A4 C3                  <4>  ret
+    13 00000501 C3                  <4>  ret
     19                              <3> %%a:
     46                              <1>     ;Here if the magic code was encounted.
-    47 000004A5 50                  <1>     push rax
-    48 000004A6 31C0                <1>     xor eax, eax    ;Magic code requests a swap to screen zero!
-    49 000004A8 E802000000          <1>     call swapSes
-    50 000004AD 58                  <1>     pop rax
+    47 00000502 50                  <1>     push rax
+    48 00000503 31C0                <1>     xor eax, eax    ;Magic code requests a swap to screen zero!
+    49 00000505 E802000000          <1>     call swapSes
+    50 0000050A 58                  <1>     pop rax
     51                              <1>     return
-    13 000004AE C3                  <2>  ret
+    13 0000050B C3                  <2>  ret
     52                              <1> 
     53                              <1> swapSes:
     54                              <1> ;Entered with al = Suggested screen number. If bigger than maxsesindex, error!
-    55 000004AF 50                  <1>     push rax
-    56 000004B0 0FB6C0              <1>     movzx eax, al
-    57 000004B3 3905(20000000)      <1>     cmp dword [dMaxSesIndx], eax
-    58 000004B9 58                  <1>     pop rax
+    55 0000050C 50                  <1>     push rax
+    56 0000050D 0FB6C0              <1>     movzx eax, al
+    57 00000510 3905(28000000)      <1>     cmp dword [dMaxSesIndx], eax
+    58 00000516 58                  <1>     pop rax
     59                              <1>     retb    ;Exit with Carry Set!
     47                              <2> cret b
-    17 000004BA 7301                <3>  j%-1 short %%a
+    17 00000517 7301                <3>  j%-1 short %%a
     18                              <3>  return
-    13 000004BC C3                  <4>  ret
+    13 00000519 C3                  <4>  ret
     19                              <3> %%a:
-    60 000004BD 9C                  <1>     pushfq
-    61 000004BE FA                  <1>     cli 
-    62 000004BF F605(33000000)FF    <1>     test byte [bSM_Req], -1 ;If its set, dont set again!
-    63 000004C6 750D                <1>     jnz .exit
-    64 000004C8 C605(33000000)FF    <1>     mov byte [bSM_Req], -1  ;Set the bit
-    65 000004CF 8805(34000000)      <1>     mov byte [bSM_Req_Scr], al   ;Suggest swapping to screen zero!
+    60 0000051A 9C                  <1>     pushfq
+    61 0000051B FA                  <1>     cli 
+    62 0000051C F605(3B000000)FF    <1>     test byte [bSM_Req], -1 ;If its set, dont set again!
+    63 00000523 750D                <1>     jnz .exit
+    64 00000525 C605(3B000000)FF    <1>     mov byte [bSM_Req], -1  ;Set the bit
+    65 0000052C 8805(3C000000)      <1>     mov byte [bSM_Req_Scr], al   ;Suggest swapping to screen zero!
     66                              <1> .exit:
-    67 000004D5 9D                  <1>     popfq
+    67 00000532 9D                  <1>     popfq
     68                              <1>     return
-    13 000004D6 C3                  <2>  ret
-    69                              <1> 
-    70                              <1> procBlock:
-    71                              <1> ;Tells DOS to put this thread of execution for this task to sleep!
-    72                              <1> ;Called with interrupts turned off.
-    73                              <1> ;When called, use the following sequence:
-    74                              <1> ; CLI
-    75                              <1> ; while (condition)
-    76                              <1> ;   prockBlock(eventId)
-    77                              <1> ;Interrupts are turned off to prevent a race condition with procRun.
-    78                              <1> ;
-    79                              <1> ;Can only be called from a multitasking driver that declares itself so as
-    80                              <1> ; these tasks don't enter the driver critical section.
-    81                              <1> 
-    82                              <1> ;Talks about the current procedure only!
-    83                              <1> ;On entry: Interrupts are off. rbx = Event identifier. ecx = Timeout interval.
-    84                              <1> ;           If dh != 0, the sleep can be awakened prematurely.
-    85                              <1> ;On exit: Interrupts are on.
-    86                              <1> ;   eax = Awake code.
-    87                              <1> ;   CF=NC -> Event wakeup (i.e. procrun called on event id)
-    88                              <1> ;   CF=CY -> Unusual wakeup,
-    89                              <1> ;       ZF=ZE -> Timeout wakeup
-    90                              <1> ;       ZF=NZ -> Someone (probably scheduler) woke up this task prematurely
-    91 000004D7 56                  <1>     push rsi
-    92 000004D8 57                  <1>     push rdi
-    93 000004D9 488B3D(39000000)    <1>     mov rdi, qword [pCurThread]
-    94                              <1> ;Start by indicating that the thread can go to sleep.
-    95 000004E0 66814F180400        <1>     or word [rdi + ptda.wFlags], THREAD_SLEEP
-    96 000004E6 66816718FEFF        <1>     and word [rdi + ptda.wFlags], ~THREAD_ALIVE
-    97 000004EC 84F6                <1>     test dh, dh
-    98 000004EE 7406                <1>     jz .noInt
-    99 000004F0 66814F180800        <1>     or word [rdi + ptda.wFlags], THREAD_LIGHT_SLEEP
-   100                              <1> .noInt:
-   101                              <1> ;Now set the event id and the length for the sleep 
-   102 000004F6 48895F2A            <1>     mov qword [rdi + ptda.qEventId], rbx
-   103 000004FA 894F22              <1>     mov dword [rdi + ptda.dSleepLen], ecx
-   104 000004FD 488B35(F9020000)    <1>     mov rsi, qword [sleepPtr]   ;Get the old head of the list
-   105 00000504 48893D(F9020000)    <1>     mov qword [sleepPtr], rdi   ;Place us at the head of the list
-   106 0000050B 4889771A            <1>     mov qword [rdi + ptda.pNSlepPtda], rsi    ;Make the old head the next second
-   107 0000050F E898020000          <1>     call taskSwitch             ;And now we swap tasks!
-   108 00000514 8B4726              <1>     mov eax, dword [rdi + ptda.dAwakeCode] 
-   109 00000517 85C0                <1>     test eax, eax
-   110 00000519 7406                <1>     jz .exit
-   111 0000051B 3D01000000          <1>     cmp eax, AWAKE_TIMEOUT  ;Set zero flag if we were awoken due to timeout
-   112 00000520 F9                  <1>     stc
-   113                              <1> .exit:
-   114 00000521 FB                  <1>     sti
-   115 00000522 5F                  <1>     pop rdi
-   116 00000523 5E                  <1>     pop rsi
-   117                              <1>     return
-    13 00000524 C3                  <2>  ret
-   118                              <1> 
-   119                              <1> procRun:
-   120                              <1> ;We go through each queue and find every single thread block.
-   121                              <1> ;On entry:  rbx = Event id to awaken tasks on.
-   122                              <1> ;On exit:   eax = Count of processes woken up. If zero, ZF=ZE.           
-   123                              <1>     return
-    13 00000525 C3                  <2>  ret
+    13 00000533 C3                  <2>  ret
     11                                  %include "./src/text/int.asm"
      1                              <1> ;All DOSMGR interrupt routines go here (not SM Shell)
      2                              <1> 
      3                              <1> 
      4                              <1> timerIrq:
      5                              <1> ;This is the replacement interrupt handler. 
-     6 00000526 FA                  <1>     cli
-     7 00000527 E801030000          <1>     call doSleepMgmt    ;Make sure to treat all sleeping tasks properly first!
-     8 0000052C 50                  <1>     push rax
-     9 0000052D FE05(0B030000)      <1>     inc byte [bSliceCnt]     ;Increment the slice counter
-    10 00000533 0FB605(0C030000)    <1>     movzx eax, byte [bSliceSize]  ;Number of ms in one timeslice
-    11 0000053A 3805(0B030000)      <1>     cmp byte [bSliceCnt], al
-    12 00000540 750E                <1>     jne .notaskSwitch
-    13 00000542 58                  <1>     pop rax
-    14 00000543 E864020000          <1>     call taskSwitch  ;Change process
-    15 00000548 50                  <1>     push rax
-    16 00000549 C605(0B030000)00    <1>     mov byte [bSliceCnt], 0  ;Reset timer
+     6 00000534 FA                  <1>     cli
+     7 00000535 E801030000          <1>     call doSleepMgmt    ;Make sure to treat all sleeping tasks properly first!
+     8 0000053A 50                  <1>     push rax
+     9 0000053B FE05(1B030000)      <1>     inc byte [bSliceCnt]     ;Increment the slice counter
+    10 00000541 0FB605(1C030000)    <1>     movzx eax, byte [bSliceSize]  ;Number of ms in one timeslice
+    11 00000548 3805(1B030000)      <1>     cmp byte [bSliceCnt], al
+    12 0000054E 750E                <1>     jne .notaskSwitch
+    13 00000550 58                  <1>     pop rax
+    14 00000551 E864020000          <1>     call taskSwitch  ;Change process
+    15 00000556 50                  <1>     push rax
+    16 00000557 C605(1B030000)00    <1>     mov byte [bSliceCnt], 0  ;Reset timer
     17                              <1> .notaskSwitch:
-    18 00000550 FE05(0D030000)      <1>     inc byte [bTimerCnt] ;Increment the BIOS timer tracker
-    19 00000556 803D(0D030000)37    <1>     cmp byte [bTimerCnt], 55 ;Every 55ms trigger the old timer interrupt
-    20 0000055D 7407                <1>     je .callBIOSTimer ;Else, just exit normally
+    18 0000055E FE05(1D030000)      <1>     inc byte [bTimerCnt] ;Increment the BIOS timer tracker
+    19 00000564 803D(1D030000)37    <1>     cmp byte [bTimerCnt], 55 ;Every 55ms trigger the old timer interrupt
+    20 0000056B 7407                <1>     je .callBIOSTimer ;Else, just exit normally
     21                              <1>     ;Else, tell the PIT to relax
-    22 0000055F B020                <1>     mov al, EOI
-    23 00000561 E620                <1>     out pic1cmd, al
-    24 00000563 58                  <1>     pop rax
+    22 0000056D B020                <1>     mov al, EOI
+    23 0000056F E620                <1>     out pic1cmd, al
+    24 00000571 58                  <1>     pop rax
     25                              <1> .exit:
-    26 00000564 48CF                <1>     iretq
+    26 00000572 48CF                <1>     iretq
     27                              <1> .callBIOSTimer:
-    28 00000566 58                  <1>     pop rax
-    29 00000567 C605(0D030000)00    <1>     mov byte [bTimerCnt], 0  ;Reset the hw counter tracker
-    30 0000056E FF25(0E030000)      <1>     jmp qword [pOldTimer]    ;Jump to the old timer
+    28 00000574 58                  <1>     pop rax
+    29 00000575 C605(1D030000)00    <1>     mov byte [bTimerCnt], 0  ;Reset the hw counter tracker
+    30 0000057C FF25(1E030000)      <1>     jmp qword [pOldTimer]    ;Jump to the old timer
     31                              <1> 
     32                              <1> 
     33                              <1> ;------------------------------------------------------------
@@ -1209,24 +1184,24 @@
     35                              <1> ;------------------------------------------------------------
     36                              <1> i2AhDisp:
     37                              <1> ;Enter with interrupts off! This is to prevent race conditions on waits!
-    38 00000574 FA                  <1>     cli ;Disable interrupts
-    39 00000575 84E4                <1>     test ah, ah
-    40 00000577 7427                <1>     jz status
-    41 00000579 80FC03              <1>     cmp ah, 03h
-    42 0000057C 7426                <1>     je ioblock
-    43 0000057E 80FC80              <1>     cmp ah, 80h
-    44 00000581 7423                <1>     je enterCriticalSection
-    45 00000583 80FC81              <1>     cmp ah, 81h
-    46 00000586 0F84A9000000        <1>     je leaveCriticalSection
-    47 0000058C 80FC82              <1>     cmp ah, 82h
-    48 0000058F 0F84D7000000        <1>     je deleteCriticalSection
-    49 00000595 80FC84              <1>     cmp ah, 84h
-    50 00000598 0F840A010000        <1>     je releaseTimeslice
-    51 0000059E 48CF                <1>     iretq
+    38 00000582 FA                  <1>     cli ;Disable interrupts
+    39 00000583 84E4                <1>     test ah, ah
+    40 00000585 7427                <1>     jz status
+    41 00000587 80FC03              <1>     cmp ah, 03h
+    42 0000058A 7426                <1>     je ioblock
+    43 0000058C 80FC80              <1>     cmp ah, 80h
+    44 0000058F 7423                <1>     je enterCriticalSection
+    45 00000591 80FC81              <1>     cmp ah, 81h
+    46 00000594 0F84A9000000        <1>     je leaveCriticalSection
+    47 0000059A 80FC82              <1>     cmp ah, 82h
+    48 0000059D 0F84D7000000        <1>     je deleteCriticalSection
+    49 000005A3 80FC84              <1>     cmp ah, 84h
+    50 000005A6 0F840A010000        <1>     je releaseTimeslice
+    51 000005AC 48CF                <1>     iretq
     52                              <1> 
     53                              <1> status:    ;AH=00h
-    54 000005A0 B4FF                <1>     mov ah, -1
-    55 000005A2 48CF                <1>     iretq
+    54 000005AE B4FF                <1>     mov ah, -1
+    55 000005B0 48CF                <1>     iretq
     56                              <1> 
     57                              <1> ioblock:    ;AH=03h
     58                              <1> ;Since singletasking DevDrvIO is properly protected through critical sections
@@ -1235,7 +1210,7 @@
     61                              <1> ; flag and incrementing the flag each time we enter and exit, then checking 
     62                              <1> ; if that flag is high for that device. 
     63                              <1> ;Input: rsi -> ASCIIZ string for device
-    64 000005A4 48CF                <1>     iretq
+    64 000005B2 48CF                <1>     iretq
     65                              <1> 
     66                              <1> enterCriticalSection:    ;AH=80h
     67                              <1> ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1261,35 +1236,35 @@
     87                              <1> ; CON driver, and the request is a READ, WRITE or WRITE/VERIFY 
     88                              <1> ; then the session number (screen number) handle is placed in the 
     89                              <1> ; ioReqPkt.strtsc of the packet.
-    90 000005A6 50                  <1>     push rax
-    91 000005A7 57                  <1>     push rdi
-    92 000005A8 84C0                <1>     test al, al
-    93 000005AA 743E                <1>     jz .exit
-    94 000005AC 663D0200            <1>     cmp ax, 2
-    95 000005B0 7738                <1>     ja .exit
-    96 000005B2 488D05(4D000000)    <1>     lea rax, drvLock
-    97 000005B9 488D3D(41000000)    <1>     lea rdi, dosLock
-    98 000005C0 480F44F8            <1>     cmove rdi, rax  ;Move the drvlock into rdi if al = 2
-    99 000005C4 7428                <1>     je .drvCrit     ;And go to the driver special handling code.
+    90 000005B4 50                  <1>     push rax
+    91 000005B5 57                  <1>     push rdi
+    92 000005B6 84C0                <1>     test al, al
+    93 000005B8 743E                <1>     jz .exit
+    94 000005BA 663D0200            <1>     cmp ax, 2
+    95 000005BE 7738                <1>     ja .exit
+    96 000005C0 488D05(55000000)    <1>     lea rax, drvLock
+    97 000005C7 488D3D(49000000)    <1>     lea rdi, dosLock
+    98 000005CE 480F44F8            <1>     cmove rdi, rax  ;Move the drvlock into rdi if al = 2
+    99 000005D2 7428                <1>     je .drvCrit     ;And go to the driver special handling code.
    100                              <1> ;Else, we are a DOS critical section, go straight to the lock code
    101                              <1> .lockMain:
    102                              <1> ;Entered with rdi -> Lock to check
-   103 000005C6 488B05(39000000)    <1>     mov rax, qword [pCurThread]   ;Get the ptr to the current task
-   104 000005CD 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If the lock is free, take it!
-   105 000005D3 7506                <1>     jne .noGive
-   106 000005D5 48894704            <1>     mov qword [rdi + critLock.pOwnerPcb], rax  ;Set yourself as owner!
-   107 000005D9 EB0D                <1>     jmp short .incCount
+   103 000005D4 488B05(41000000)    <1>     mov rax, qword [pCurThread]   ;Get the ptr to the current task
+   104 000005DB 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If the lock is free, take it!
+   105 000005E1 7506                <1>     jne .noGive
+   106 000005E3 48894704            <1>     mov qword [rdi + critLock.pOwnerPcb], rax  ;Set yourself as owner!
+   107 000005E7 EB0D                <1>     jmp short .incCount
    108                              <1> .noGive:
-   109 000005DB 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax
-   110 000005DF 7407                <1>     je .incCount    ;If we own the lock, increment the count!
-   111 000005E1 E8C6010000          <1>     call taskSwitch ;Else, put the calling task on ice for one cycle.
-   112 000005E6 EBDE                <1>     jmp short .lockMain     ;Try obtain the lock again!
+   109 000005E9 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax
+   110 000005ED 7407                <1>     je .incCount    ;If we own the lock, increment the count!
+   111 000005EF E8C6010000          <1>     call taskSwitch ;Else, put the calling task on ice for one cycle.
+   112 000005F4 EBDE                <1>     jmp short .lockMain     ;Try obtain the lock again!
    113                              <1> .incCount:
-   114 000005E8 FF07                <1>     inc dword [rdi + critLock.dCount]   ;Increment the entry count!
+   114 000005F6 FF07                <1>     inc dword [rdi + critLock.dCount]   ;Increment the entry count!
    115                              <1> .exit:
-   116 000005EA 5F                  <1>     pop rdi
-   117 000005EB 58                  <1>     pop rax
-   118 000005EC 48CF                <1>     iretq
+   116 000005F8 5F                  <1>     pop rdi
+   117 000005F9 58                  <1>     pop rax
+   118 000005FA 48CF                <1>     iretq
    119                              <1> .drvCrit:
    120                              <1> ;Entered with:
    121                              <1> ;rdi -> Driver lock object
@@ -1297,97 +1272,97 @@
    123                              <1> ;rbx -> Request packet
    124                              <1> ;If either rsi or rbx are NULL then we assume this is a non-driver 
    125                              <1> ; request for an uninterruptable critical section.
-   126 000005EE 4885F6              <1>     test rsi, rsi
-   127 000005F1 74D3                <1>     jz .lockMain
-   128 000005F3 4885DB              <1>     test rbx, rbx
-   129 000005F6 74CE                <1>     jz .lockMain
-   130 000005F8 0FB74608            <1>     movzx eax, word [rsi + drvHdr.attrib]
-   131 000005FC 66A92000            <1>     test ax, devDrvMulti
-   132 00000600 74C4                <1>     jz .lockMain   ;If not a multitasking driver, try grab the lock!
+   126 000005FC 4885F6              <1>     test rsi, rsi
+   127 000005FF 74D3                <1>     jz .lockMain
+   128 00000601 4885DB              <1>     test rbx, rbx
+   129 00000604 74CE                <1>     jz .lockMain
+   130 00000606 0FB74608            <1>     movzx eax, word [rsi + drvHdr.attrib]
+   131 0000060A 66A92000            <1>     test ax, devDrvMulti
+   132 0000060E 74C4                <1>     jz .lockMain   ;If not a multitasking driver, try grab the lock!
    133                              <1> ;We reach the code below if we are entering an interruptable driver.
    134                              <1> ;In this case, we do not wait on the lock and proceed as normal.
-   135 00000602 66A90080            <1>     test ax , devDrvChar
-   136 00000606 74E2                <1>     jz .exit    ;Exit if not a char dev
-   137 00000608 66250300            <1>     and ax, devDrvConIn | devDrvConOut
-   138 0000060C 74DC                <1>     jz .exit    ;If neither bit set, exit
+   135 00000610 66A90080            <1>     test ax , devDrvChar
+   136 00000614 74E2                <1>     jz .exit    ;Exit if not a char dev
+   137 00000616 66250300            <1>     and ax, devDrvConIn | devDrvConOut
+   138 0000061A 74DC                <1>     jz .exit    ;If neither bit set, exit
    139                              <1> ;Here if this is either a MDOS CON In or CON Out device. 
    140                              <1> ;If request is read/write, place current task's screen number 
    141                              <1> ; in the ioReqPkt.strtsc field (we zxtend the byte to qword).
    142                              <1> ;This is a kludge as DOS is not multitasking so of course will not 
    143                              <1> ; do this for us :) It is the only reasonable way of communicating 
    144                              <1> ; the screen number of the task making the request to the driver.
-   145 0000060E 0FB64302            <1>     movzx eax, byte [rbx + drvReqHdr.cmdcde]
-   146 00000612 3D04000000          <1>     cmp eax, drvREAD
-   147 00000617 740E                <1>     je .ioReq
-   148 00000619 3D08000000          <1>     cmp eax, drvWRITE
-   149 0000061E 7407                <1>     je .ioReq
-   150 00000620 3D09000000          <1>     cmp eax, drvWRITEVERIFY
-   151 00000625 75C3                <1>     jne .exit
+   145 0000061C 0FB64302            <1>     movzx eax, byte [rbx + drvReqHdr.cmdcde]
+   146 00000620 3D04000000          <1>     cmp eax, drvREAD
+   147 00000625 740E                <1>     je .ioReq
+   148 00000627 3D08000000          <1>     cmp eax, drvWRITE
+   149 0000062C 7407                <1>     je .ioReq
+   150 0000062E 3D09000000          <1>     cmp eax, drvWRITEVERIFY
+   151 00000633 75C3                <1>     jne .exit
    152                              <1> .ioReq:
-   153 00000627 488B05(39000000)    <1>     mov rax, qword [pCurThread]
-   154 0000062E 8B00                <1>     mov eax, dword [rax + pcb.hScrnNum]
-   155 00000630 89431A              <1>     mov dword [rbx + ioReqPkt.strtsc], eax
-   156 00000633 EBB5                <1>     jmp short .exit
+   153 00000635 488B05(41000000)    <1>     mov rax, qword [pCurThread]
+   154 0000063C 8B00                <1>     mov eax, dword [rax + pcb.hScrnNum]
+   155 0000063E 89431A              <1>     mov dword [rbx + ioReqPkt.strtsc], eax
+   156 00000641 EBB5                <1>     jmp short .exit
    157                              <1> 
    158                              <1> leaveCriticalSection:    ;AH=81h
    159                              <1> ;If the calling task owns the lock, decrements the lock
-   160 00000635 50                  <1>     push rax
-   161 00000636 57                  <1>     push rdi
-   162 00000637 84C0                <1>     test al, al ;If 0, exit
-   163 00000639 742D                <1>     jz .exit
-   164 0000063B 3C02                <1>     cmp al, 2
-   165 0000063D 7729                <1>     ja .exit    ;If above 2, exit
-   166 0000063F 488D3D(41000000)    <1>     lea rdi, dosLock
-   167 00000646 488D05(4D000000)    <1>     lea rax, drvLock
-   168 0000064D 480F44F8            <1>     cmove rdi, rax  ;Swap rdi to drvLock if AL=2
-   169 00000651 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If lock is free, exit!
-   170 00000657 740F                <1>     je .exit
-   171 00000659 488B05(39000000)    <1>     mov rax, qword [pCurThread]   ;Else, check we own the lock
-   172 00000660 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax
-   173 00000664 7502                <1>     jne .exit   ;If we don't own the lock, exit!
-   174 00000666 FF0F                <1>     dec dword [rdi + critLock.dCount]   ;Else, decrement the lock!
+   160 00000643 50                  <1>     push rax
+   161 00000644 57                  <1>     push rdi
+   162 00000645 84C0                <1>     test al, al ;If 0, exit
+   163 00000647 742D                <1>     jz .exit
+   164 00000649 3C02                <1>     cmp al, 2
+   165 0000064B 7729                <1>     ja .exit    ;If above 2, exit
+   166 0000064D 488D3D(49000000)    <1>     lea rdi, dosLock
+   167 00000654 488D05(55000000)    <1>     lea rax, drvLock
+   168 0000065B 480F44F8            <1>     cmove rdi, rax  ;Swap rdi to drvLock if AL=2
+   169 0000065F 813F00000000        <1>     cmp dword [rdi + critLock.dCount], 0    ;If lock is free, exit!
+   170 00000665 740F                <1>     je .exit
+   171 00000667 488B05(41000000)    <1>     mov rax, qword [pCurThread]   ;Else, check we own the lock
+   172 0000066E 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax
+   173 00000672 7502                <1>     jne .exit   ;If we don't own the lock, exit!
+   174 00000674 FF0F                <1>     dec dword [rdi + critLock.dCount]   ;Else, decrement the lock!
    175                              <1> .exit:
-   176 00000668 5F                  <1>     pop rdi
-   177 00000669 58                  <1>     pop rax
-   178 0000066A 48CF                <1>     iretq
+   176 00000676 5F                  <1>     pop rdi
+   177 00000677 58                  <1>     pop rax
+   178 00000678 48CF                <1>     iretq
    179                              <1> 
    180                              <1> deleteCriticalSection:      ;AH=82h
    181                              <1> ;Will clear any critical sections OWNED by the task that is trying to 
    182                              <1> ; enter the lock! Else, this function will do nothing.
-   183 0000066C 50                  <1>     push rax
-   184 0000066D 57                  <1>     push rdi
-   185 0000066E 488B05(39000000)    <1>     mov rax, qword [pCurThread]
-   186 00000675 488D3D(41000000)    <1>     lea rdi, dosLock
-   187 0000067C E810000000          <1>     call .clearLock
-   188 00000681 488D3D(4D000000)    <1>     lea rdi, drvLock
-   189 00000688 E804000000          <1>     call .clearLock
-   190 0000068D 5F                  <1>     pop rdi
-   191 0000068E 58                  <1>     pop rax
-   192 0000068F 48CF                <1>     iretq
+   183 0000067A 50                  <1>     push rax
+   184 0000067B 57                  <1>     push rdi
+   185 0000067C 488B05(41000000)    <1>     mov rax, qword [pCurThread]
+   186 00000683 488D3D(49000000)    <1>     lea rdi, dosLock
+   187 0000068A E810000000          <1>     call .clearLock
+   188 0000068F 488D3D(55000000)    <1>     lea rdi, drvLock
+   189 00000696 E804000000          <1>     call .clearLock
+   190 0000069B 5F                  <1>     pop rdi
+   191 0000069C 58                  <1>     pop rax
+   192 0000069D 48CF                <1>     iretq
    193                              <1> .clearLock:
-   194 00000691 F707FFFFFFFF        <1>     test dword [rdi + critLock.dCount], -1    ;Is this lock allocated?
+   194 0000069F F707FFFFFFFF        <1>     test dword [rdi + critLock.dCount], -1    ;Is this lock allocated?
    195                              <1>     retz    ;If this lock is free, exit! 
     23                              <2> cret z
-    17 00000697 7501                <3>  j%-1 short %%a
+    17 000006A5 7501                <3>  j%-1 short %%a
     18                              <3>  return
-    13 00000699 C3                  <4>  ret
+    13 000006A7 C3                  <4>  ret
     19                              <3> %%a:
-   196 0000069A 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax  ;Else, do we own it?
+   196 000006A8 48394704            <1>     cmp qword [rdi + critLock.pOwnerPcb], rax  ;Else, do we own it?
    197                              <1>     retne   ;If not, exit!
     35                              <2> cret ne
-    17 0000069E 7401                <3>  j%-1 short %%a
+    17 000006AC 7401                <3>  j%-1 short %%a
     18                              <3>  return
-    13 000006A0 C3                  <4>  ret
+    13 000006AE C3                  <4>  ret
     19                              <3> %%a:
-   198 000006A1 C70700000000        <1>     mov dword [rdi + critLock.dCount], 0    ;Else, free it!
+   198 000006AF C70700000000        <1>     mov dword [rdi + critLock.dCount], 0    ;Else, free it!
    199                              <1>     return
-    13 000006A7 C3                  <2>  ret
+    13 000006B5 C3                  <2>  ret
    200                              <1> 
    201                              <1> 
    202                              <1> releaseTimeslice:  ;AH=84h
    203                              <1> ;Intercepts the keyboard and releases the timeslice for the task that enters.
-   204 000006A8 E8FF000000          <1>     call taskSwitch
-   205 000006AD 48CF                <1>     iretq
+   204 000006B6 E8FF000000          <1>     call taskSwitch
+   205 000006BB 48CF                <1>     iretq
     12                                  %include "./src/text/switch.asm"
      1                              <1> ;All context switching functionality is here.
      2                              <1> 
@@ -1401,52 +1376,52 @@
     10                              <1> 
     11                              <1> 
     12                              <1> ;Set the SDA to the new tasks' SDA. 
-    13 000006AF 488DB3FA000000      <1>     lea rsi, qword [rbx + pcb.sdaCopy] ;Point rdi to the sda space
-    14 000006B6 488B3D(08000000)    <1>     mov rdi, qword [pDosSda]
-    15 000006BD 8B0D(1C000000)      <1>     mov ecx, dword [dSdaLen]
-    16 000006C3 F3A4                <1>     rep movsb   ;Transfer over the SDA
+    13 000006BD 488DB3FA000000      <1>     lea rsi, qword [rbx + pcb.sdaCopy] ;Point rdi to the sda space
+    14 000006C4 488B3D(08000000)    <1>     mov rdi, qword [pDosSda]
+    15 000006CB 8B0D(14000000)      <1>     mov ecx, dword [dSdaLen]
+    16 000006D1 F3A4                <1>     rep movsb   ;Transfer over the SDA
     17                              <1> 
     18                              <1> ;Set the new tasks' DOS interrupt handlers.
-    19 000006C5 488B93F2000000      <1>     mov rdx, qword [rbx + pcb.pInt2Eh]
-    20 000006CC B82E000000          <1>     mov eax, 2Eh
-    21 000006D1 E804020000          <1>     call setIntVector    
-    22 000006D6 488B93EA000000      <1>     mov rdx, qword [rbx + pcb.pInt24h]
-    23 000006DD B824000000          <1>     mov eax, 24h
-    24 000006E2 E8F3010000          <1>     call setIntVector
-    25 000006E7 488B93E2000000      <1>     mov rdx, qword [rbx + pcb.pInt23h]
-    26 000006EE B823000000          <1>     mov eax, 23h
-    27 000006F3 E8E2010000          <1>     call setIntVector
-    28 000006F8 488B93DA000000      <1>     mov rdx, qword [rbx + pcb.pInt22h]
-    29 000006FF B822000000          <1>     mov eax, 22h
-    30 00000704 E8D1010000          <1>     call setIntVector 
+    19 000006D3 488B93F2000000      <1>     mov rdx, qword [rbx + pcb.pInt2Eh]
+    20 000006DA B82E000000          <1>     mov eax, 2Eh
+    21 000006DF E88E020000          <1>     call setIntVector    
+    22 000006E4 488B93EA000000      <1>     mov rdx, qword [rbx + pcb.pInt24h]
+    23 000006EB B824000000          <1>     mov eax, 24h
+    24 000006F0 E87D020000          <1>     call setIntVector
+    25 000006F5 488B93E2000000      <1>     mov rdx, qword [rbx + pcb.pInt23h]
+    26 000006FC B823000000          <1>     mov eax, 23h
+    27 00000701 E86C020000          <1>     call setIntVector
+    28 00000706 488B93DA000000      <1>     mov rdx, qword [rbx + pcb.pInt22h]
+    29 0000070D B822000000          <1>     mov eax, 22h
+    30 00000712 E85B020000          <1>     call setIntVector 
     31                              <1>     return
-    13 00000709 C3                  <2>  ret
+    13 00000717 C3                  <2>  ret
     32                              <1> 
     33                              <1> sleepCurrentTask:
     34                              <1> ;Puts the current task on ice, saves all of its relevant state in 
     35                              <1> ; the pcb and then returns to the caller.
-    36 0000070A 488B3D(39000000)    <1>     mov rdi, qword [pCurThread]
-    37 00000711 57                  <1>     push rdi    ;Save the CurTask pointer for use later!
-    38 00000712 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
-    39 00000719 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
-    40 00000720 8B0D(1C000000)      <1>     mov ecx, dword [dSdaLen]
-    41 00000726 F3A4                <1>     rep movsb   ;Transfer over the SDA
-    42 00000728 5F                  <1>     pop rdi
+    36 00000718 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    37 0000071F 57                  <1>     push rdi    ;Save the CurTask pointer for use later!
+    38 00000720 488DBFFA000000      <1>     lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
+    39 00000727 488B35(08000000)    <1>     mov rsi, qword [pDosSda]
+    40 0000072E 8B0D(14000000)      <1>     mov ecx, dword [dSdaLen]
+    41 00000734 F3A4                <1>     rep movsb   ;Transfer over the SDA
+    42 00000736 5F                  <1>     pop rdi
     43                              <1> ;Save the current Int 22h, 23h and 24h handlers in the paused tasks' PCB.
-    44 00000729 B822000000          <1>     mov eax, 22h
-    45 0000072E E87D010000          <1>     call getIntVector
-    46 00000733 48899FDA000000      <1>     mov qword [rdi + pcb.pInt22h], rbx
-    47 0000073A B823000000          <1>     mov eax, 23h
-    48 0000073F E86C010000          <1>     call getIntVector
-    49 00000744 48899FE2000000      <1>     mov qword [rdi + pcb.pInt23h], rbx
-    50 0000074B B824000000          <1>     mov eax, 24h
-    51 00000750 E85B010000          <1>     call getIntVector
-    52 00000755 48899FEA000000      <1>     mov qword [rdi + pcb.pInt24h], rbx
-    53 0000075C B82E000000          <1>     mov eax, 2Eh
-    54 00000761 E84A010000          <1>     call getIntVector
-    55 00000766 48899FF2000000      <1>     mov qword [rdi + pcb.pInt2Eh], rbx
+    44 00000737 B822000000          <1>     mov eax, 22h
+    45 0000073C E807020000          <1>     call getIntVector
+    46 00000741 48899FDA000000      <1>     mov qword [rdi + pcb.pInt22h], rbx
+    47 00000748 B823000000          <1>     mov eax, 23h
+    48 0000074D E8F6010000          <1>     call getIntVector
+    49 00000752 48899FE2000000      <1>     mov qword [rdi + pcb.pInt23h], rbx
+    50 00000759 B824000000          <1>     mov eax, 24h
+    51 0000075E E8E5010000          <1>     call getIntVector
+    52 00000763 48899FEA000000      <1>     mov qword [rdi + pcb.pInt24h], rbx
+    53 0000076A B82E000000          <1>     mov eax, 2Eh
+    54 0000076F E8D4010000          <1>     call getIntVector
+    55 00000774 48899FF2000000      <1>     mov qword [rdi + pcb.pInt2Eh], rbx
     56                              <1>     return
-    13 0000076D C3                  <2>  ret
+    13 0000077B C3                  <2>  ret
     57                              <1> 
     58                              <1> chooseNextTask:
     59                              <1> ;Makes a choice of the next task. For now, its the next task,
@@ -1464,22 +1439,22 @@
     71                              <1> ;Start by checking that we don't own the uninterruptable lock. If
     72                              <1> ; we do, exit! We should never be in a situation where it is allocated 
     73                              <1> ; and we don't own it here.
-    74 0000076E 488B3D(39000000)    <1>     mov rdi, qword [pCurThread]
-    75 00000775 8B05(4D000000)      <1>     mov eax, dword [drvLock + critLock.dCount]
-    76 0000077B 85C0                <1>     test eax, eax
-    77 0000077D 7416                <1>     jz .noDrvLock   ;Not owned, proceed!
-    78 0000077F 483B3D(51000000)    <1>     cmp rdi, qword [drvLock + critLock.pOwnerPcb]
+    74 0000077C 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    75 00000783 8B05(55000000)      <1>     mov eax, dword [drvLock + critLock.dCount]
+    76 00000789 85C0                <1>     test eax, eax
+    77 0000078B 7416                <1>     jz .noDrvLock   ;Not owned, proceed!
+    78 0000078D 483B3D(59000000)    <1>     cmp rdi, qword [drvLock + critLock.pOwnerPcb]
     79                              <1>     rete    ;Return if they are equal!
     31                              <2> cret e
-    17 00000786 7501                <3>  j%-1 short %%a
+    17 00000794 7501                <3>  j%-1 short %%a
     18                              <3>  return
-    13 00000788 C3                  <4>  ret
+    13 00000796 C3                  <4>  ret
     19                              <3> %%a:
-    80 00000789 488D15(10020000)    <1>     lea rdx, badLockStr
-    81 00000790 E9F1000000          <1>     jmp fatalHalt
+    80 00000797 488D15(10020000)    <1>     lea rdx, badLockStr
+    81 0000079E E97B010000          <1>     jmp fatalHalt
     82                              <1> .noDrvLock:
     83                              <1>     return   ;TMPTMP: Keep current task!
-    13 00000795 C3                  <2>  ret
+    13 000007A3 C3                  <2>  ret
     84                              <1> ;Now we know we don't own the uninterruptable lock, we choose a task
     85                              <1> ; to swap to. Check if the Screen Manager has told us what to swap to.
     86                              <1> ; If it hasn't, we check if the task screen is the same as the current 
@@ -1489,12 +1464,12 @@
     90                              <1> ;rdi points to the current task.
     91                              <1> 
     92                              <1> ;End by setting the new task and signalling procrun on this
-    93 00000796 890D(35000000)      <1>     mov dword [dCurThread], ecx  ;Store the task number 
-    94 0000079C E861010000          <1>     call getPcbPtr ;Get ptr in rdi to the current PCB table
-    95 000007A1 4889FB              <1>     mov rbx, rdi
-    96 000007A4 48891D(39000000)    <1>     mov qword [pCurThread], rbx           ;Setup internal data properly!
+    93 000007A4 890D(3D000000)      <1>     mov dword [dCurThread], ecx  ;Store the task number 
+    94 000007AA E8EB010000          <1>     call getPcbPtr ;Get ptr in rdi to the current PCB table
+    95 000007AF 4889FB              <1>     mov rbx, rdi
+    96 000007B2 48891D(41000000)    <1>     mov qword [pCurThread], rbx           ;Setup internal data properly!
     97                              <1>     return
-    13 000007AB C3                  <2>  ret
+    13 000007B9 C3                  <2>  ret
     98                              <1> 
     99                              <1> 
    100                              <1> taskSwitch:
@@ -1502,127 +1477,207 @@
    102                              <1> ;If a task needed to be put to sleep for a period of time, then 
    103                              <1> ; we have already set the sleep information in the pcb before coming
    104                              <1> ; here.
-   105 000007AC 48871D(39000000)    <1>     xchg qword [pCurThread], rbx  ;Get the ptr to the current session. Save rbx.
-   106 000007B3 48896352            <1>     mov qword [rbx + pcb.sPtda + ptda.qRSP], rsp
-   107 000007B7 488DA3DA000000      <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.boS] ;Point rsp to where to store regs
-   108 000007BE 48871D(39000000)    <1>     xchg qword [pCurThread], rbx  ;Get back the value of rbx in rbx.
-   109 000007C5 50                  <1>     push rax
-   110 000007C6 53                  <1>     push rbx
-   111 000007C7 51                  <1>     push rcx
-   112 000007C8 52                  <1>     push rdx
-   113 000007C9 56                  <1>     push rsi
-   114 000007CA 57                  <1>     push rdi
-   115 000007CB 55                  <1>     push rbp
-   116 000007CC 4150                <1>     push r8
-   117 000007CE 4151                <1>     push r9
-   118 000007D0 4152                <1>     push r10
-   119 000007D2 4153                <1>     push r11
-   120 000007D4 4154                <1>     push r12 
-   121 000007D6 4155                <1>     push r13
-   122 000007D8 4156                <1>     push r14
-   123 000007DA 4157                <1>     push r15
-   124 000007DC 9C                  <1>     pushfq
-   125 000007DD FC                  <1>     cld ;Ensure all writes occur in the right way.
-   126 000007DE 488D25(00000000)    <1>     lea rsp, sm$intTOS  ;Now go to the interrupt stack
+   105 000007BA 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Get the ptr to the current session. Save rbx.
+   106 000007C1 48896352            <1>     mov qword [rbx + pcb.sPtda + ptda.qRSP], rsp
+   107 000007C5 488DA3DA000000      <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.boS] ;Point rsp to where to store regs
+   108 000007CC 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Get back the value of rbx in rbx.
+   109 000007D3 50                  <1>     push rax
+   110 000007D4 53                  <1>     push rbx
+   111 000007D5 51                  <1>     push rcx
+   112 000007D6 52                  <1>     push rdx
+   113 000007D7 56                  <1>     push rsi
+   114 000007D8 57                  <1>     push rdi
+   115 000007D9 55                  <1>     push rbp
+   116 000007DA 4150                <1>     push r8
+   117 000007DC 4151                <1>     push r9
+   118 000007DE 4152                <1>     push r10
+   119 000007E0 4153                <1>     push r11
+   120 000007E2 4154                <1>     push r12 
+   121 000007E4 4155                <1>     push r13
+   122 000007E6 4156                <1>     push r14
+   123 000007E8 4157                <1>     push r15
+   124 000007EA 9C                  <1>     pushfq
+   125 000007EB FC                  <1>     cld ;Ensure all writes occur in the right way.
+   126 000007EC 488D25(00000000)    <1>     lea rsp, sm$intTOS  ;Now go to the interrupt stack
    127                              <1> 
-   128 000007E5 E820FFFFFF          <1>     call sleepCurrentTask
-   129 000007EA E87FFFFFFF          <1>     call chooseNextTask     ;Sets the task variables for the new task
-   130 000007EF E8BBFEFFFF          <1>     call awakenNewTask
+   128 000007F3 E820FFFFFF          <1>     call sleepCurrentTask
+   129 000007F8 E87FFFFFFF          <1>     call chooseNextTask     ;Sets the task variables for the new task
+   130 000007FD E8BBFEFFFF          <1>     call awakenNewTask
    131                              <1> 
-   132 000007F4 488B1D(39000000)    <1>     mov rbx, qword [pCurThread]
+   132 00000802 488B1D(41000000)    <1>     mov rbx, qword [pCurThread]
    133                              <1> ;Skip reloading the flags here!
-   134 000007FB 488D6362            <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.sRegsTbl + 8]
-   135 000007FF 415F                <1>     pop r15
-   136 00000801 415E                <1>     pop r14
-   137 00000803 415D                <1>     pop r13
-   138 00000805 415C                <1>     pop r12
-   139 00000807 415B                <1>     pop r11
-   140 00000809 415A                <1>     pop r10
-   141 0000080B 4159                <1>     pop r9
-   142 0000080D 4158                <1>     pop r8
-   143 0000080F 5D                  <1>     pop rbp
-   144 00000810 5F                  <1>     pop rdi
-   145 00000811 5E                  <1>     pop rsi
-   146 00000812 5A                  <1>     pop rdx
-   147 00000813 59                  <1>     pop rcx
-   148 00000814 5B                  <1>     pop rbx
-   149 00000815 58                  <1>     pop rax
-   150 00000816 48871D(39000000)    <1>     xchg qword [pCurThread], rbx
-   151 0000081D 488B6352            <1>     mov rsp, qword [rbx + pcb.sPtda + ptda.qRSP]
+   134 00000809 488D6362            <1>     lea rsp, qword [rbx + pcb.sPtda + ptda.sRegsTbl + 8]
+   135 0000080D 415F                <1>     pop r15
+   136 0000080F 415E                <1>     pop r14
+   137 00000811 415D                <1>     pop r13
+   138 00000813 415C                <1>     pop r12
+   139 00000815 415B                <1>     pop r11
+   140 00000817 415A                <1>     pop r10
+   141 00000819 4159                <1>     pop r9
+   142 0000081B 4158                <1>     pop r8
+   143 0000081D 5D                  <1>     pop rbp
+   144 0000081E 5F                  <1>     pop rdi
+   145 0000081F 5E                  <1>     pop rsi
+   146 00000820 5A                  <1>     pop rdx
+   147 00000821 59                  <1>     pop rcx
+   148 00000822 5B                  <1>     pop rbx
+   149 00000823 58                  <1>     pop rax
+   150 00000824 48871D(41000000)    <1>     xchg qword [pCurThread], rbx
+   151 0000082B 488B6352            <1>     mov rsp, qword [rbx + pcb.sPtda + ptda.qRSP]
    152                              <1> ;Reload the flags once we have switched stacks!
-   153 00000821 FF735A              <1>     push qword [rbx + pcb.sPtda + ptda.sRegsTbl]
-   154 00000824 48871D(39000000)    <1>     xchg qword [pCurThread], rbx  ;Now swap things back  
-   155 0000082B 9D                  <1>     popfq   ;Pop flags back right at the end :)
+   153 0000082F FF735A              <1>     push qword [rbx + pcb.sPtda + ptda.sRegsTbl]
+   154 00000832 48871D(41000000)    <1>     xchg qword [pCurThread], rbx  ;Now swap things back  
+   155 00000839 9D                  <1>     popfq   ;Pop flags back right at the end :)
    156                              <1>     return
-    13 0000082C C3                  <2>  ret
+    13 0000083A C3                  <2>  ret
     13                                  %include "./src/text/proc.asm"
      1                              <1> ;Process and thread management routines live here
      2                              <1> 
      3                              <1> doSleepMgmt:
      4                              <1> ;Decrements the sleep counter for each sleeping ptda on the sleep list
      5                              <1> ; and removes entries from the list if they have finished their sleep.
-     6 0000082D 57                  <1>     push rdi
-     7 0000082E 56                  <1>     push rsi
-     8 0000082F 31F6                <1>     xor esi, esi    ;Zero the "previous" pointer
-     9 00000831 488B3D(F9020000)    <1>     mov rdi, qword [sleepPtr]
+     6 0000083B 57                  <1>     push rdi
+     7 0000083C 56                  <1>     push rsi
+     8 0000083D 31F6                <1>     xor esi, esi    ;Zero the "previous" pointer
+     9 0000083F 488B3D(69000000)    <1>     mov rdi, qword [sleepPtr]
     10                              <1> .lp:
-    11 00000838 4885FF              <1>     test rdi, rdi
-    12 0000083B 7446                <1>     jz .exit
-    13 0000083D 817F2200000000      <1>     cmp dword [rdi + ptda.dSleepLen], 0      ;A never awaken task?
-    14 00000844 7434                <1>     je .gotoNext
-    15 00000846 FF4F22              <1>     dec dword [rdi + ptda.dSleepLen]
-    16 00000849 752F                <1>     jnz .gotoNext
+    11 00000846 4885FF              <1>     test rdi, rdi
+    12 00000849 7446                <1>     jz .exit
+    13 0000084B 817F2200000000      <1>     cmp dword [rdi + ptda.dSleepLen], 0      ;A never awaken task?
+    14 00000852 7434                <1>     je .gotoNext
+    15 00000854 FF4F22              <1>     dec dword [rdi + ptda.dSleepLen]
+    16 00000857 752F                <1>     jnz .gotoNext
     17                              <1> ;Start by awakening the task.
-    18 0000084B 66816718F3FF        <1>     and word [rdi + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
-    19 00000851 66814F180100        <1>     or word [rdi + ptda.wFlags], THREAD_ALIVE
+    18 00000859 66816718F3FF        <1>     and word [rdi + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
+    19 0000085F 66814F180100        <1>     or word [rdi + ptda.wFlags], THREAD_ALIVE
     20                              <1> ;Now set that this task is being awoken due to timeout wakeup
-    21 00000857 C7472601000000      <1>     mov dword [rdi + ptda.dAwakeCode], AWAKE_TIMEOUT
+    21 00000865 C7472601000000      <1>     mov dword [rdi + ptda.dAwakeCode], AWAKE_TIMEOUT
     22                              <1> ;Here take the ptda out of the sleep list.
-    23 0000085E 50                  <1>     push rax
-    24 0000085F 488B471A            <1>     mov rax, qword [rdi + ptda.pNSlepPtda]    ;Get the next PTDA ptr in rax
-    25 00000863 4885F6              <1>     test rsi, rsi   ;Are we replacing the first ptda in the list?
-    26 00000866 750D                <1>     jnz .noHead
-    27 00000868 488905(F9020000)    <1>     mov qword [sleepPtr], rax ;If so, put the link into the head
-    28 0000086F 4889C7              <1>     mov rdi, rax    ;Move rdi to the new head of the list
-    29 00000872 58                  <1>     pop rax
-    30 00000873 EBC3                <1>     jmp short .lp   ;And go again!
+    23 0000086C 50                  <1>     push rax
+    24 0000086D 488B471A            <1>     mov rax, qword [rdi + ptda.pNSlepPtda]    ;Get the next PTDA ptr in rax
+    25 00000871 4885F6              <1>     test rsi, rsi   ;Are we replacing the first ptda in the list?
+    26 00000874 750D                <1>     jnz .noHead
+    27 00000876 488905(69000000)    <1>     mov qword [sleepPtr], rax ;If so, put the link into the head
+    28 0000087D 4889C7              <1>     mov rdi, rax    ;Move rdi to the new head of the list
+    29 00000880 58                  <1>     pop rax
+    30 00000881 EBC3                <1>     jmp short .lp   ;And go again!
     31                              <1> .noHead:
-    32 00000875 4889461A            <1>     mov qword [rsi + ptda.pNSlepPtda], rax ;Else in the ptda
-    33 00000879 58                  <1>     pop rax
+    32 00000883 4889461A            <1>     mov qword [rsi + ptda.pNSlepPtda], rax ;Else in the ptda
+    33 00000887 58                  <1>     pop rax
     34                              <1> .gotoNext:
-    35 0000087A 4889FE              <1>     mov rsi, rdi    ;Make the current ptda the anchor
-    36 0000087D 488B7F1A            <1>     mov rdi, qword [rdi + ptda.pNSlepPtda]    ;Get the next ptda
-    37 00000881 EBB5                <1>     jmp short .lp
+    35 00000888 4889FE              <1>     mov rsi, rdi    ;Make the current ptda the anchor
+    36 0000088B 488B7F1A            <1>     mov rdi, qword [rdi + ptda.pNSlepPtda]    ;Get the next ptda
+    37 0000088F EBB5                <1>     jmp short .lp
     38                              <1> .exit:
-    39 00000883 5E                  <1>     pop rsi
-    40 00000884 5F                  <1>     pop rdi
+    39 00000891 5E                  <1>     pop rsi
+    40 00000892 5F                  <1>     pop rdi
     41                              <1>     return
-    13 00000885 C3                  <2>  ret
+    13 00000893 C3                  <2>  ret
     42                              <1> 
-    43                              <1> 
-    44                              <1> fatalHalt:
-    45                              <1> ;This is the handler if a fatal error occurs where we need to halt the 
-    46                              <1> ; machine. We call DOS as we don't need to preserve anything since we 
-    47                              <1> ; freeze the machine. 
-    48                              <1> ;Input: rdx -> String to print.
-    49 00000886 52                  <1>     push rdx
-    50 00000887 488D15(00020000)    <1>     lea rdx, fatalStr
-    51 0000088E E815000000          <1>     call .outStr
-    52 00000893 5A                  <1>     pop rdx
-    53 00000894 E80F000000          <1>     call .outStr
-    54 00000899 488D15(3A020000)    <1>     lea rdx, sysHltStr
-    55 000008A0 E803000000          <1>     call .outStr
-    56                              <1> ;
-    57                              <1> ;Here provide a regdump of the system registers (and possibly stack?). 
-    58                              <1> ;
-    59 000008A5 FA                  <1>     cli
-    60                              <1> .deadLp:
-    61 000008A6 EBFE                <1>     jmp short .deadLp
-    62                              <1> .outStr:
-    63 000008A8 B800090000          <1>     mov eax, 0900h
-    64 000008AD CD21                <1>     int 21h
-    65                              <1>     return
-    13 000008AF C3                  <2>  ret
+    43                              <1> procBlock:
+    44                              <1> ;Tells DOS to put this thread of execution for this task to sleep!
+    45                              <1> ;Called with interrupts turned off.
+    46                              <1> ;When called, use the following sequence:
+    47                              <1> ; CLI
+    48                              <1> ; while (condition)
+    49                              <1> ;   prockBlock(eventId)
+    50                              <1> ;Interrupts are turned off to prevent a race condition with procRun.
+    51                              <1> ;
+    52                              <1> ;Can only be called from a multitasking driver that declares itself so as
+    53                              <1> ; these tasks don't enter the driver critical section.
+    54                              <1> 
+    55                              <1> ;Talks about the current procedure only!
+    56                              <1> ;On entry: Interrupts are off. rbx = Event identifier. ecx = Timeout interval.
+    57                              <1> ;           If dh != 0, the sleep can be awakened prematurely.
+    58                              <1> ;On exit: Interrupts are on.
+    59                              <1> ;   eax = Awake code.
+    60                              <1> ;   CF=NC -> Event wakeup (i.e. procrun called on event id)
+    61                              <1> ;   CF=CY -> Unusual wakeup,
+    62                              <1> ;       ZF=ZE -> Timeout wakeup
+    63                              <1> ;       ZF=NZ -> Someone (probably scheduler) woke up this task prematurely
+    64 00000894 56                  <1>     push rsi
+    65 00000895 57                  <1>     push rdi
+    66 00000896 488B3D(41000000)    <1>     mov rdi, qword [pCurThread]
+    67                              <1> ;Start by indicating that the thread can go to sleep.
+    68 0000089D 66814F180400        <1>     or word [rdi + ptda.wFlags], THREAD_SLEEP
+    69 000008A3 66816718FEFF        <1>     and word [rdi + ptda.wFlags], ~THREAD_ALIVE
+    70 000008A9 84F6                <1>     test dh, dh
+    71 000008AB 7406                <1>     jz .noInt
+    72 000008AD 66814F180800        <1>     or word [rdi + ptda.wFlags], THREAD_LIGHT_SLEEP
+    73                              <1> .noInt:
+    74                              <1> ;Now set the event id and the length for the sleep 
+    75 000008B3 48895F2A            <1>     mov qword [rdi + ptda.qEventId], rbx
+    76 000008B7 894F22              <1>     mov dword [rdi + ptda.dSleepLen], ecx
+    77 000008BA 488B35(69000000)    <1>     mov rsi, qword [sleepPtr]   ;Get the old head of the list
+    78 000008C1 48893D(69000000)    <1>     mov qword [sleepPtr], rdi   ;Place us at the head of the list
+    79 000008C8 4889771A            <1>     mov qword [rdi + ptda.pNSlepPtda], rsi    ;Make the old head the next second
+    80 000008CC E8E9FEFFFF          <1>     call taskSwitch             ;And now we swap tasks!
+    81 000008D1 8B4726              <1>     mov eax, dword [rdi + ptda.dAwakeCode] 
+    82 000008D4 85C0                <1>     test eax, eax
+    83 000008D6 7406                <1>     jz .exit
+    84 000008D8 3D01000000          <1>     cmp eax, AWAKE_TIMEOUT  ;Set zero flag if we were awoken due to timeout
+    85 000008DD F9                  <1>     stc
+    86                              <1> .exit:
+    87 000008DE FB                  <1>     sti
+    88 000008DF 5F                  <1>     pop rdi
+    89 000008E0 5E                  <1>     pop rsi
+    90                              <1>     return
+    13 000008E1 C3                  <2>  ret
+    91                              <1> 
+    92                              <1> procRun:
+    93                              <1> ;We go through each queue and find every single thread block.
+    94                              <1> ;On entry:  rbx = Event id to awaken tasks on.
+    95                              <1> ;On exit:   eax = Count of processes woken up. If zero, ZF=ZE.
+    96 000008E2 51                  <1>     push rcx
+    97 000008E3 57                  <1>     push rdi
+    98 000008E4 55                  <1>     push rbp
+    99 000008E5 31C0                <1>     xor eax, eax    ;Use eax as the counter of free'd processes
+   100 000008E7 31C9                <1>     xor ecx, ecx
+   101                              <1> .lp:
+   102 000008E9 E8AC000000          <1>     call getPcbPtr  ;Get the ptr in rdi
+   103 000008EE E8DB000000          <1>     call getThreadPtr   ;Get ptr to the first PTDA in rbp
+   104 000008F3 48395D2A            <1>     cmp qword [rbp + ptda.qEventId], rbx
+   105 000008F7 7515                <1>     jne .gotoNext
+   106                              <1> ;Here signal this thread to run! Set awake code, clear sleep and set alive!
+   107 000008F9 C7452600000000      <1>     mov dword [rbp + ptda.dAwakeCode], AWAKE_NORMAL
+   108 00000900 66816518F3FF        <1>     and word [rbp + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
+   109 00000906 66814D180100        <1>     or word [rbp + ptda.wFlags], THREAD_ALIVE
+   110 0000090C FFC0                <1>     inc eax     ;Increment the counter
+   111                              <1> .gotoNext:
+   112 0000090E FFC1                <1>     inc ecx ;Prepare to go to the next one
+   113 00000910 3B0D(24000000)      <1>     cmp ecx, dword [dMaxTask]
+   114 00000916 75D1                <1>     jne .lp
+   115 00000918 5D                  <1>     pop rbp
+   116 00000919 5F                  <1>     pop rdi
+   117 0000091A 59                  <1>     pop rcx
+   118 0000091B 85C0                <1>     test eax, eax   ;Set ZF if appropriate
+   119                              <1>     return
+    13 0000091D C3                  <2>  ret
+   120                              <1> 
+   121                              <1> 
+   122                              <1> fatalHalt:
+   123                              <1> ;This is the handler if a fatal error occurs where we need to halt the 
+   124                              <1> ; machine. We call DOS as we don't need to preserve anything since we 
+   125                              <1> ; freeze the machine. 
+   126                              <1> ;Input: rdx -> String to print.
+   127 0000091E 52                  <1>     push rdx
+   128 0000091F 488D15(00020000)    <1>     lea rdx, fatalStr
+   129 00000926 E815000000          <1>     call .outStr
+   130 0000092B 5A                  <1>     pop rdx
+   131 0000092C E80F000000          <1>     call .outStr
+   132 00000931 488D15(3A020000)    <1>     lea rdx, sysHltStr
+   133 00000938 E803000000          <1>     call .outStr
+   134                              <1> ;
+   135                              <1> ;Here provide a regdump of the system registers (and possibly stack?). 
+   136                              <1> ;
+   137 0000093D FA                  <1>     cli
+   138                              <1> .deadLp:
+   139 0000093E EBFE                <1>     jmp short .deadLp
+   140                              <1> .outStr:
+   141 00000940 B800090000          <1>     mov eax, 0900h
+   142 00000945 CD21                <1>     int 21h
+   143                              <1>     return
+    13 00000947 C3                  <2>  ret
     14                                  %include "./src/text/util.asm"
      1                              <1> ;Misc utility functions go here
      2                              <1> 
@@ -1632,104 +1687,110 @@
      6                              <1> ; al = Interrupt number
      7                              <1> ;Returns: 
      8                              <1> ; rbx -> Ptr to interrupt handler
-     9 000008B0 0F010D(01030000)    <1>     sidt [pIDT]    ;Get the current IDT base pointer
-    10 000008B7 0FB6C0              <1>     movzx eax, al
-    11 000008BA 48C1E004            <1>     shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
-    12 000008BE 480305(03030000)    <1>     add rax, qword [pIDT.base]    
-    13 000008C5 31DB                <1>     xor ebx, ebx
-    14 000008C7 8B5808              <1>     mov ebx, dword [rax + 8]    ;Get bits 63...32
-    15 000008CA 48C1E310            <1>     shl rbx, 10h    ;Push the high dword high
-    16 000008CE 668B5806            <1>     mov bx, word [rax + 6]      ;Get bits 31...16
-    17 000008D2 48C1E310            <1>     shl rbx, 10h    ;Push word 2 into posiiton
-    18 000008D6 668B18              <1>     mov bx, word [rax]          ;Get bits 15...0
+     9 00000948 0F010D(11030000)    <1>     sidt [pIDT]    ;Get the current IDT base pointer
+    10 0000094F 0FB6C0              <1>     movzx eax, al
+    11 00000952 48C1E004            <1>     shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
+    12 00000956 480305(13030000)    <1>     add rax, qword [pIDT.base]    
+    13 0000095D 31DB                <1>     xor ebx, ebx
+    14 0000095F 8B5808              <1>     mov ebx, dword [rax + 8]    ;Get bits 63...32
+    15 00000962 48C1E310            <1>     shl rbx, 10h    ;Push the high dword high
+    16 00000966 668B5806            <1>     mov bx, word [rax + 6]      ;Get bits 31...16
+    17 0000096A 48C1E310            <1>     shl rbx, 10h    ;Push word 2 into posiiton
+    18 0000096E 668B18              <1>     mov bx, word [rax]          ;Get bits 15...0
     19                              <1>     return
-    13 000008D9 C3                  <2>  ret
+    13 00000971 C3                  <2>  ret
     20                              <1> 
     21                              <1> setIntVector:
     22                              <1> ;Called with:
     23                              <1> ;Interrupts Off!
     24                              <1> ;   rdx = Pointer to interrupt handler
     25                              <1> ;   al = Interrupt number
-    26 000008DA 0F010D(01030000)    <1>     sidt [pIDT]    ;Get the current IDT base pointer
-    27 000008E1 0FB6C0              <1>     movzx eax, al
-    28 000008E4 48C1E004            <1>     shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
-    29 000008E8 480305(03030000)    <1>     add rax, qword [pIDT.base]    
-    30 000008EF 668910              <1>     mov word [rax], dx  ;Get low word into offset 15...0
-    31 000008F2 48C1EA10            <1>     shr rdx, 10h    ;Bring next word low
-    32 000008F6 66895006            <1>     mov word [rax + 6], dx  ;Get low word into offset 31...16
-    33 000008FA 48C1EA10            <1>     shr rdx, 10h    ;Bring last dword low
-    34 000008FE 895008              <1>     mov dword [rax + 8], edx
+    26 00000972 0F010D(11030000)    <1>     sidt [pIDT]    ;Get the current IDT base pointer
+    27 00000979 0FB6C0              <1>     movzx eax, al
+    28 0000097C 48C1E004            <1>     shl rax, 4h     ;Multiply IDT entry number by 16 (Size of IDT entry)
+    29 00000980 480305(13030000)    <1>     add rax, qword [pIDT.base]    
+    30 00000987 668910              <1>     mov word [rax], dx  ;Get low word into offset 15...0
+    31 0000098A 48C1EA10            <1>     shr rdx, 10h    ;Bring next word low
+    32 0000098E 66895006            <1>     mov word [rax + 6], dx  ;Get low word into offset 31...16
+    33 00000992 48C1EA10            <1>     shr rdx, 10h    ;Bring last dword low
+    34 00000996 895008              <1>     mov dword [rax + 8], edx
     35                              <1>     return
-    13 00000901 C3                  <2>  ret
+    13 00000999 C3                  <2>  ret
     36                              <1> 
     37                              <1> 
     38                              <1> getPcbPtr:
-    39                              <1> ;Input: ecx = Number of the pcb to get the pointer of!
-    40                              <1> ;Output: rdi -> PCB requested
-    41 00000902 488B3D(10000000)    <1>     mov rdi, qword [pPcbTbl]
-    42 00000909 85C9                <1>     test ecx, ecx   ;Pick off the case where session number is 0.
-    43                              <1>     retz
-    23                              <2> cret z
-    17 0000090B 7501                <3>  j%-1 short %%a
-    18                              <3>  return
-    13 0000090D C3                  <4>  ret
-    19                              <3> %%a:
-    44 0000090E 50                  <1>     push rax
-    45 0000090F 51                  <1>     push rcx
-    46 00000910 8B05(18000000)      <1>     mov eax, dword [dPcbLen]
-    47 00000916 F7E1                <1>     mul ecx 
-    48 00000918 4801C7              <1>     add rdi, rax
-    49 0000091B 59                  <1>     pop rcx
-    50 0000091C 58                  <1>     pop rax
+    39                              <1> ;Return a ptr to the requested PCB in rdi
+    40                              <1> ;Input: ecx = Number of the pcb to get the pointer of!
+    41                              <1> ;Output: rdi -> PCB requested
+    42 0000099A 488B3D(18000000)    <1>     mov rdi, qword [pPcbTbl] ;Get head of SFT pointer
+    43                              <1> .walk:
+    44 000009A1 3B4F08              <1>     cmp ecx, dword [rdi + soth.dNumEntry]
+    45 000009A4 7211                <1>     jb .thisTable
+    46 000009A6 2B4F08              <1>     sub ecx, dword [rdi + soth.dNumEntry] ;Subtract
+    47 000009A9 488B3F              <1>     mov rdi, qword [rdi + soth.pNextSoth] ;Goto next table
+    48 000009AC 4881FFFFFFFFFF      <1>     cmp rdi, -1
+    49 000009B3 75EC                <1>     jne .walk
+    50 000009B5 F9                  <1>     stc
     51                              <1>     return
-    13 0000091D C3                  <2>  ret
-    52                              <1> 
-    53                              <1> getThreadPtr:
-    54                              <1> ;Input: rdi -> PCB to get the thread pointer to
-    55                              <1> ;Output: rbp -> Primary (foreground) ptda of the process
-    56 0000091E 488D6F20            <1>     lea rbp, qword [rdi + pcb.sPtda]
-    57                              <1>     return
-    13 00000922 C3                  <2>  ret
-    58                              <1> 
-    59                              <1> getSchedHeadPtr:
-    60                              <1> ;Gets a pointer to your desired schedule.
-    61                              <1> ;Input: al = Number of the schedule you desire (0-31)
-    62 00000923 50                  <1>     push rax
-    63 00000924 53                  <1>     push rbx
-    64 00000925 BB1F000000          <1>     mov ebx, 31
-    65 0000092A 29C3                <1>     sub ebx, eax    ;Get the reverse order schedule number in ebx
-    66 0000092C B815000000          <1>     mov eax, schedHead_size
-    67 00000931 F7E3                <1>     mul ebx 
-    68 00000933 488D35(59000000)    <1>     lea rsi, scheduleLists
-    69 0000093A 4801C6              <1>     add rsi, rax
-    70 0000093D 5B                  <1>     pop rbx
-    71 0000093E 58                  <1>     pop rax
-    72                              <1>     return 
-    13 0000093F C3                  <2>  ret
-    73                              <1> 
-    74                              <1> getScheduleLock:
-    75                              <1> ;Will attempt to get the lock for a schedule head. Will spin on it
-    76                              <1> ; until it can get it. 
-    77                              <1> ;Input: rsi -> Schedule head to obtain lock for.
-    78 00000940 50                  <1>     push rax
-    79 00000941 53                  <1>     push rbx
-    80 00000942 31DB                <1>     xor ebx, ebx
-    81 00000944 FFCB                <1>     dec ebx     ;Make into -1
-    82                              <1> .lp:
-    83 00000946 31C0                <1>     xor eax, eax    ;Set/Reset al to zero
-    84                              <1>     ;If var = al, move bl (-1) into the lock. Else mov var into al.
-    85 00000948 F00FB01E            <1>     lock cmpxchg byte [rsi + schedHead.bLock], bl
-    86 0000094C 75F8                <1>     jnz .lp     ;If the var was not 0, check again!
-    87 0000094E 5B                  <1>     pop rbx
-    88 0000094F 58                  <1>     pop rax
-    89                              <1>     return
-    13 00000950 C3                  <2>  ret
-    90                              <1> 
-    91                              <1> 
-    92                              <1> releaseScheduleLock:
-    93 00000951 C60600              <1>     mov byte [rsi + schedHead.bLock], 0
-    94                              <1>     return
-    13 00000954 C3                  <2>  ret
+    13 000009B6 C3                  <2>  ret
+    52                              <1> .thisTable:
+    53 000009B7 50                  <1>     push rax
+    54 000009B8 52                  <1>     push rdx
+    55 000009B9 8B05(20000000)      <1>     mov eax, dword [dPcbLen]
+    56 000009BF F7E1                <1>     mul ecx
+    57 000009C1 4801C7              <1>     add rdi, rax    ;Shift rdi to go to SFT entry in current table
+    58 000009C4 5A                  <1>     pop rdx
+    59 000009C5 58                  <1>     pop rax
+    60 000009C6 4881C710000000      <1>     add rdi, soth_size  ;Go past the header
+    61                              <1>     return
+    13 000009CD C3                  <2>  ret
+    62                              <1> 
+    63                              <1> getThreadPtr:
+    64                              <1> ;Input: rdi -> PCB to get the thread pointer to
+    65                              <1> ;Output: rbp -> Primary (foreground) ptda of the process
+    66 000009CE 488D6F20            <1>     lea rbp, qword [rdi + pcb.sPtda]
+    67                              <1>     return
+    13 000009D2 C3                  <2>  ret
+    68                              <1> 
+    69                              <1> getSchedHeadPtr:
+    70                              <1> ;Gets a pointer to your desired schedule.
+    71                              <1> ;Input: al = Number of the schedule you desire (0-31)
+    72 000009D3 50                  <1>     push rax
+    73 000009D4 53                  <1>     push rbx
+    74 000009D5 BB1F000000          <1>     mov ebx, MAX_SCHED
+    75 000009DA 29C3                <1>     sub ebx, eax    ;Get the reverse order schedule number in ebx
+    76 000009DC B815000000          <1>     mov eax, schedHead_size
+    77 000009E1 F7E3                <1>     mul ebx 
+    78 000009E3 488D35(71000000)    <1>     lea rsi, scheduleLists
+    79 000009EA 4801C6              <1>     add rsi, rax
+    80 000009ED 5B                  <1>     pop rbx
+    81 000009EE 58                  <1>     pop rax
+    82                              <1>     return 
+    13 000009EF C3                  <2>  ret
+    83                              <1> 
+    84                              <1> getScheduleLock:
+    85                              <1> ;Will attempt to get the lock for a schedule head. Will spin on it
+    86                              <1> ; until it can get it. 
+    87                              <1> ;Input: rsi -> Schedule head to obtain lock for.
+    88 000009F0 50                  <1>     push rax
+    89 000009F1 53                  <1>     push rbx
+    90 000009F2 31DB                <1>     xor ebx, ebx
+    91 000009F4 FFCB                <1>     dec ebx     ;Make into -1
+    92                              <1> .lp:
+    93 000009F6 31C0                <1>     xor eax, eax    ;Set/Reset al to zero
+    94                              <1>     ;If var = al, move bl (-1) into the lock. Else mov var into al.
+    95 000009F8 F00FB01E            <1>     lock cmpxchg byte [rsi + schedHead.bLock], bl
+    96 000009FC 75F8                <1>     jnz .lp     ;If the var was not 0, check again!
+    97 000009FE 5B                  <1>     pop rbx
+    98 000009FF 58                  <1>     pop rax
+    99                              <1>     return
+    13 00000A00 C3                  <2>  ret
+   100                              <1> 
+   101                              <1> 
+   102                              <1> releaseScheduleLock:
+   103 00000A01 C60600              <1>     mov byte [rsi + schedHead.bLock], 0
+   104                              <1>     return
+    13 00000A04 C3                  <2>  ret
     15                                  %include "./src/text/shell.asm"
      1                              <1> ;This is the main Session Manager "interactive" shell.
      2                              <1> 
@@ -1737,113 +1798,113 @@
      4                              <1> 
      5                              <1> shellEntry:
      6                              <1> ;Entered with interrupts on.
-     7 00000955 488D25(00000000)    <1>     lea rsp, sm$shlTOS  ;Set/Reset internal shell stack! 
+     7 00000A05 488D25(00000000)    <1>     lea rsp, sm$shlTOS  ;Set/Reset internal shell stack! 
      8                              <1> ;And fall through to the main print loop
      9                              <1> shellMain:
     10                              <1> ;The shell main routine prints the number of sessions,
     11                              <1> ; the program names.
-    12 0000095C E838010000          <1>     call resetScreen
+    12 00000A0C E838010000          <1>     call resetScreen
     13                              <1> ;Printing the screen header!
-    14 00000961 488D15(85030000)    <1>     lea rdx, ttlStr
-    15 00000968 E87D010000          <1>     call puts
-    16 0000096D 488D15(9E020000)    <1>     lea rdx, sessStr
-    17 00000974 E871010000          <1>     call puts
-    18 00000979 8B15(20000000)      <1>     mov edx, dword [dMaxSesIndx]    ;This is also number of USER sessions
-    19 0000097F FFC2                <1>     inc edx     ;Add 1 to include the SM session
-    20 00000981 80C230              <1>     add dl, "0" ;Convert to ASCII char
-    21 00000984 E859010000          <1>     call putch
-    22 00000989 E864010000          <1>     call putNewline
-    23 0000098E 488D15(4D020000)    <1>     lea rdx, uline
-    24 00000995 E850010000          <1>     call puts
-    25 0000099A E853010000          <1>     call putNewline
+    14 00000A11 488D15(85030000)    <1>     lea rdx, ttlStr
+    15 00000A18 E87D010000          <1>     call puts
+    16 00000A1D 488D15(9E020000)    <1>     lea rdx, sessStr
+    17 00000A24 E871010000          <1>     call puts
+    18 00000A29 8B15(28000000)      <1>     mov edx, dword [dMaxSesIndx]    ;This is also number of USER sessions
+    19 00000A2F FFC2                <1>     inc edx     ;Add 1 to include the SM session
+    20 00000A31 80C230              <1>     add dl, "0" ;Convert to ASCII char
+    21 00000A34 E859010000          <1>     call putch
+    22 00000A39 E864010000          <1>     call putNewline
+    23 00000A3E 488D15(4D020000)    <1>     lea rdx, uline
+    24 00000A45 E850010000          <1>     call puts
+    25 00000A4A E853010000          <1>     call putNewline
     26                              <1> ;Printing the sessions.
-    27 0000099F B230                <1>     mov dl, "0"
-    28 000009A1 E83C010000          <1>     call putch
-    29 000009A6 488D15(E6020000)    <1>     lea rdx, colonStr
-    30 000009AD E838010000          <1>     call puts
-    31 000009B2 488D15(42030000)    <1>     lea rdx, sesManStr
-    32 000009B9 E82C010000          <1>     call puts
-    33 000009BE E82F010000          <1>     call putNewline
+    27 00000A4F B230                <1>     mov dl, "0"
+    28 00000A51 E83C010000          <1>     call putch
+    29 00000A56 488D15(E6020000)    <1>     lea rdx, colonStr
+    30 00000A5D E838010000          <1>     call puts
+    31 00000A62 488D15(42030000)    <1>     lea rdx, sesManStr
+    32 00000A69 E82C010000          <1>     call puts
+    33 00000A6E E82F010000          <1>     call putNewline
     34                              <1> ;Now we print the name from each session's current PSP environment pointer.
-    35 000009C3 B901000000          <1>     mov ecx, 1  ;Start from this session number
+    35 00000A73 B901000000          <1>     mov ecx, 1  ;Start from this session number
     36                              <1> .printLp:
-    37 000009C8 89CA                <1>     mov edx, ecx
-    38 000009CA 80C230              <1>     add dl, "0" 
-    39 000009CD E810010000          <1>     call putch
-    40 000009D2 488D15(E6020000)    <1>     lea rdx, colonStr
-    41 000009D9 E80C010000          <1>     call puts
-    42 000009DE 488D15(32030000)    <1>     lea rdx, waitStr    ;Now print the state of the session
-    43 000009E5 E800010000          <1>     call puts
+    37 00000A78 89CA                <1>     mov edx, ecx
+    38 00000A7A 80C230              <1>     add dl, "0" 
+    39 00000A7D E810010000          <1>     call putch
+    40 00000A82 488D15(E6020000)    <1>     lea rdx, colonStr
+    41 00000A89 E80C010000          <1>     call puts
+    42 00000A8E 488D15(32030000)    <1>     lea rdx, waitStr    ;Now print the state of the session
+    43 00000A95 E800010000          <1>     call puts
     44                              <1>     ;Now get the string to print
-    45 000009EA E813FFFFFF          <1>     call getPcbPtr ;Get the pcb ptr in rdi
-    46 000009EF 488B9712010000      <1>     mov rdx, qword [rdi + pcb.sdaCopy + sda.currentPSP]    ;Get the PSPptr
-    47 000009F6 E8AD000000          <1>     call getProcName    ;Get the process name ptr for process of PSP in rdx
-    48 000009FB 730E                <1>     jnc .nameFound
-    49 000009FD 488D15(67030000)    <1>     lea rdx, noNameStr
-    50 00000A04 E8E1000000          <1>     call puts
-    51 00000A09 EB1A                <1>     jmp short .nextSession
+    45 00000A9A E8FBFEFFFF          <1>     call getPcbPtr ;Get the pcb ptr in rdi
+    46 00000A9F 488B9712010000      <1>     mov rdx, qword [rdi + pcb.sdaCopy + sda.currentPSP]    ;Get the PSPptr
+    47 00000AA6 E8AD000000          <1>     call getProcName    ;Get the process name ptr for process of PSP in rdx
+    48 00000AAB 730E                <1>     jnc .nameFound
+    49 00000AAD 488D15(67030000)    <1>     lea rdx, noNameStr
+    50 00000AB4 E8E1000000          <1>     call puts
+    51 00000AB9 EB1A                <1>     jmp short .nextSession
     52                              <1> .nameFound:
-    53 00000A0B 4889D7              <1>     mov rdi, rdx    ;Copy the ptr here to get the len of the ASCIIZ string
-    54 00000A0E 51                  <1>     push rcx        ;Save the number of the pcb we are at
-    55 00000A0F B812120000          <1>     mov eax, 1212h
-    56 00000A14 CD2F                <1>     int 2Fh
+    53 00000ABB 4889D7              <1>     mov rdi, rdx    ;Copy the ptr here to get the len of the ASCIIZ string
+    54 00000ABE 51                  <1>     push rcx        ;Save the number of the pcb we are at
+    55 00000ABF B812120000          <1>     mov eax, 1212h
+    56 00000AC4 CD2F                <1>     int 2Fh
     57                              <1>     ;ecx now has the string length + terminating null
     58                              <1>     ;rdx points to the ASCIIZ string
-    59 00000A16 FFC9                <1>     dec ecx     ;Drop the terminating null
-    60 00000A18 BB01000000          <1>     mov ebx, 1  ;STDOUT
-    61 00000A1D B800400000          <1>     mov eax, 4000h
-    62 00000A22 CD21                <1>     int 21h
-    63 00000A24 59                  <1>     pop rcx     ;Get back the pcb number
+    59 00000AC6 FFC9                <1>     dec ecx     ;Drop the terminating null
+    60 00000AC8 BB01000000          <1>     mov ebx, 1  ;STDOUT
+    61 00000ACD B800400000          <1>     mov eax, 4000h
+    62 00000AD2 CD21                <1>     int 21h
+    63 00000AD4 59                  <1>     pop rcx     ;Get back the pcb number
     64                              <1> .nextSession:
-    65 00000A25 E8C8000000          <1>     call putNewline
-    66 00000A2A FFC1                <1>     inc ecx
-    67 00000A2C 390D(20000000)      <1>     cmp dword [dMaxSesIndx], ecx   ;Keep going until dMaxSesIndx < ecx
-    68 00000A32 7394                <1>     jae .printLp
+    65 00000AD5 E8C8000000          <1>     call putNewline
+    66 00000ADA FFC1                <1>     inc ecx
+    67 00000ADC 390D(28000000)      <1>     cmp dword [dMaxSesIndx], ecx   ;Keep going until dMaxSesIndx < ecx
+    68 00000AE2 7394                <1>     jae .printLp
     69                              <1> ;All printing done, now wait for input from user
-    70 00000A34 488D15(10030000)    <1>     lea rdx, helpStr
-    71 00000A3B E8AA000000          <1>     call puts
-    72 00000A40 488D15(E9020000)    <1>     lea rdx, promptStr
-    73 00000A47 E89E000000          <1>     call puts
-    74 00000A4C 488D15(2C000000)    <1>     lea rdx, inStr
-    75 00000A53 66C7020200          <1>     mov word [rdx], 0002h   ;Init the buffered string
-    76 00000A58 B8000A0000          <1>     mov eax, 0A00h  ;Await buffered input
-    77 00000A5D CD21                <1>     int 21h
-    78 00000A5F 0FB64A02            <1>     movzx ecx, byte [rdx + 2]
-    79 00000A63 80F93F              <1>     cmp cl, "?"
-    80 00000A66 0F84F0FEFFFF        <1>     je shellMain
-    81 00000A6C 80F931              <1>     cmp cl, "1"
-    82 00000A6F 721C                <1>     jb badChoice
-    83 00000A71 80F939              <1>     cmp cl, "9"
-    84 00000A74 7717                <1>     ja badChoice
-    85 00000A76 80E930              <1>     sub cl, "0"
-    86 00000A79 390D(20000000)      <1>     cmp dword [dMaxSesIndx], ecx
-    87 00000A7F 720C                <1>     jb badChoice
+    70 00000AE4 488D15(10030000)    <1>     lea rdx, helpStr
+    71 00000AEB E8AA000000          <1>     call puts
+    72 00000AF0 488D15(E9020000)    <1>     lea rdx, promptStr
+    73 00000AF7 E89E000000          <1>     call puts
+    74 00000AFC 488D15(34000000)    <1>     lea rdx, inStr
+    75 00000B03 66C7020200          <1>     mov word [rdx], 0002h   ;Init the buffered string
+    76 00000B08 B8000A0000          <1>     mov eax, 0A00h  ;Await buffered input
+    77 00000B0D CD21                <1>     int 21h
+    78 00000B0F 0FB64A02            <1>     movzx ecx, byte [rdx + 2]
+    79 00000B13 80F93F              <1>     cmp cl, "?"
+    80 00000B16 0F84F0FEFFFF        <1>     je shellMain
+    81 00000B1C 80F931              <1>     cmp cl, "1"
+    82 00000B1F 721C                <1>     jb badChoice
+    83 00000B21 80F939              <1>     cmp cl, "9"
+    84 00000B24 7717                <1>     ja badChoice
+    85 00000B26 80E930              <1>     sub cl, "0"
+    86 00000B29 390D(28000000)      <1>     cmp dword [dMaxSesIndx], ecx
+    87 00000B2F 720C                <1>     jb badChoice
     88                              <1> swapScreen:
     89                              <1> ;Enact the swap to the new screen here!
     90                              <1> 
     91                              <1>     
     92                              <1> 
     93                              <1> ;Finish by signalling to DOSMGR that we are done!
-    94 00000A81 B800840000          <1>     mov eax, 8400h  ;Release Timeslice and then loop up again!
-    95 00000A86 CD2A                <1>     int 2Ah
-    96 00000A88 E9C8FEFFFF          <1>     jmp shellEntry  ;Next instruction is a restart!
+    94 00000B31 B800840000          <1>     mov eax, 8400h  ;Release Timeslice and then loop up again!
+    95 00000B36 CD2A                <1>     int 2Ah
+    96 00000B38 E9C8FEFFFF          <1>     jmp shellEntry  ;Next instruction is a restart!
     97                              <1> 
     98                              <1> badChoice:
     99                              <1> ;Beep at the user and then reset the screen, show display!
-   100 00000A8D B207                <1>     mov dl, 07h ;Beep at the user (Do I want to do that?)
-   101 00000A8F E84E000000          <1>     call putch
-   102 00000A94 E9C3FEFFFF          <1>     jmp shellMain
+   100 00000B3D B207                <1>     mov dl, 07h ;Beep at the user (Do I want to do that?)
+   101 00000B3F E84E000000          <1>     call putch
+   102 00000B44 E9C3FEFFFF          <1>     jmp shellMain
    103                              <1> resetScreen:
    104                              <1> ;Dirty Hack! Please just send the ANSI code and make the driver recognise
    105                              <1> ; that one ANSI code... Or do a less dirty hack and do what COMMAND.COM does.
    106                              <1> 
    107                              <1> ;Select segment zero which resets current screen w/o affecting frozen state!
-   108 00000A99 31F6                <1>     xor esi, esi    
-   109 00000A9B B80C440000          <1>     mov eax, 440Ch
-   110 00000AA0 B943030000          <1>     mov ecx, 0343h      ;Screen Control/"Restore Segment"
-   111 00000AA5 CD21                <1>     int 21h
+   108 00000B49 31F6                <1>     xor esi, esi    
+   109 00000B4B B80C440000          <1>     mov eax, 440Ch
+   110 00000B50 B943030000          <1>     mov ecx, 0343h      ;Screen Control/"Restore Segment"
+   111 00000B55 CD21                <1>     int 21h
    112                              <1>     return
-    13 00000AA7 C3                  <2>  ret
+    13 00000B57 C3                  <2>  ret
    113                              <1> 
    114                              <1> ;Shell handy routines
    115                              <1> getProcName:
@@ -1853,47 +1914,47 @@
    119                              <1> ;
    120                              <1> ;Here we search for the double 00 and then check if it is 0001 and
    121                              <1> ; pass the ptr to the word after.
-   122 00000AA8 488B523E            <1>     mov rdx, qword [rdx + psp.envPtr]   ;Get the environement pointer
-   123 00000AAC FA                  <1>     cli
-   124 00000AAD 51                  <1>     push rcx
-   125 00000AAE 31C9                <1>     xor ecx, ecx
-   126 00000AB0 B9FF7F0000          <1>     mov ecx, 7FFFh  ;Max environment size
+   122 00000B58 488B523E            <1>     mov rdx, qword [rdx + psp.envPtr]   ;Get the environement pointer
+   123 00000B5C FA                  <1>     cli
+   124 00000B5D 51                  <1>     push rcx
+   125 00000B5E 31C9                <1>     xor ecx, ecx
+   126 00000B60 B9FF7F0000          <1>     mov ecx, 7FFFh  ;Max environment size
    127                              <1> .gep0:
-   128 00000AB5 66813A0000          <1>     cmp word [rdx], 0   ;Zero word?
-   129 00000ABA 740D                <1>     je short .gep1
-   130 00000ABC 48FFC2              <1>     inc rdx         ;Go to the next byte
-   131 00000ABF FFC9                <1>     dec ecx
-   132 00000AC1 75F2                <1>     jnz short .gep0
+   128 00000B65 66813A0000          <1>     cmp word [rdx], 0   ;Zero word?
+   129 00000B6A 740D                <1>     je short .gep1
+   130 00000B6C 48FFC2              <1>     inc rdx         ;Go to the next byte
+   131 00000B6F FFC9                <1>     dec ecx
+   132 00000B71 75F2                <1>     jnz short .gep0
    133                              <1> .gep00:
    134                              <1>     ;Failure here if we haven't hit the double null by the end of 32Kb
-   135 00000AC3 59                  <1>     pop rcx
-   136 00000AC4 31D2                <1>     xor edx, edx    ;Turn it into null pointer
-   137 00000AC6 F9                  <1>     stc     ;Set CF
-   138 00000AC7 EB17                <1>     jmp short .exit ;Exit reenabling the interrupts!
+   135 00000B73 59                  <1>     pop rcx
+   136 00000B74 31D2                <1>     xor edx, edx    ;Turn it into null pointer
+   137 00000B76 F9                  <1>     stc     ;Set CF
+   138 00000B77 EB17                <1>     jmp short .exit ;Exit reenabling the interrupts!
    139                              <1> .gep1:
-   140 00000AC9 4881C202000000      <1>     add rdx, 2  ;Skip the double null
-   141 00000AD0 66813A0100          <1>     cmp word [rdx], 1   ;Check if one more string in environment
-   142 00000AD5 75EC                <1>     jne .gep00
-   143 00000AD7 4881C202000000      <1>     add rdx, 2  ;Skip the 0001 word. Should always clear CF
-   144 00000ADE 59                  <1>     pop rcx
-   145 00000ADF F8                  <1>     clc     ;Clear CF
+   140 00000B79 4881C202000000      <1>     add rdx, 2  ;Skip the double null
+   141 00000B80 66813A0100          <1>     cmp word [rdx], 1   ;Check if one more string in environment
+   142 00000B85 75EC                <1>     jne .gep00
+   143 00000B87 4881C202000000      <1>     add rdx, 2  ;Skip the 0001 word. Should always clear CF
+   144 00000B8E 59                  <1>     pop rcx
+   145 00000B8F F8                  <1>     clc     ;Clear CF
    146                              <1> .exit:
-   147 00000AE0 FB                  <1>     sti
+   147 00000B90 FB                  <1>     sti
    148                              <1>     return
-    13 00000AE1 C3                  <2>  ret
+    13 00000B91 C3                  <2>  ret
    149                              <1> putch:
-   150 00000AE2 B800020000          <1>     mov eax, 0200h
-   151 00000AE7 CD21                <1>     int 21h
+   150 00000B92 B800020000          <1>     mov eax, 0200h
+   151 00000B97 CD21                <1>     int 21h
    152                              <1>     return
-    13 00000AE9 C3                  <2>  ret
+    13 00000B99 C3                  <2>  ret
    153                              <1> puts:
-   154 00000AEA B800090000          <1>     mov eax, 0900h
-   155 00000AEF CD21                <1>     int 21h
+   154 00000B9A B800090000          <1>     mov eax, 0900h
+   155 00000B9F CD21                <1>     int 21h
    156                              <1>     return
-    13 00000AF1 C3                  <2>  ret
+    13 00000BA1 C3                  <2>  ret
    157                              <1> putNewline:
-   158 00000AF2 488D15(4A020000)    <1>     lea rdx, newlineStr
-   159 00000AF9 E9ECFFFFFF          <1>     jmp puts
+   158 00000BA2 488D15(4A020000)    <1>     lea rdx, newlineStr
+   159 00000BA9 E9ECFFFFFF          <1>     jmp puts
    160                              <1> 
    161                              <1> ;------------------------------------------------------------
    162                              <1> ;Default SM Int 22h Handler
@@ -1906,25 +1967,25 @@
    169                              <1> ;This will never happen as no COMMAND.COM can be exited
    170                              <1> ; with the defaults we have set up.
    171                              <1> i22hHdlr:
-   172 00000AFE 488D15(ED010000)    <1>     lea rdx, sesFrozStr
-   173 00000B05 B800090000          <1>     mov eax, 0900h
-   174 00000B0A CD21                <1>     int 21h
+   172 00000BAE 488D15(ED010000)    <1>     lea rdx, sesFrozStr
+   173 00000BB5 B800090000          <1>     mov eax, 0900h
+   174 00000BBA CD21                <1>     int 21h
    175                              <1> .lp:
-   176 00000B0C EBFE                <1>     jmp short .lp ;Enter an infinite loop
+   176 00000BBC EBFE                <1>     jmp short .lp ;Enter an infinite loop
    177                              <1> 
    178                              <1> i22hShell:
    179                              <1> ;Simply reset the screen and print the info again!
-   180 00000B0E E949FEFFFF          <1>     jmp shellMain
+   180 00000BBE E949FEFFFF          <1>     jmp shellMain
    181                              <1> 
    182                              <1> i23hHdlr:
    183                              <1> ;Default i23 handler, relaunch the shell.
    184                              <1> ;Not doing so will reenter the call on a newline...
-   185 00000B13 F9                  <1>     stc
-   186 00000B14 C20800              <1>     ret 8
+   185 00000BC3 F9                  <1>     stc
+   186 00000BC4 C20800              <1>     ret 8
    187                              <1> i24hHdlr:
-   188 00000B17 B003                <1>     mov al, 3   ;Always FAIL
+   188 00000BC7 B003                <1>     mov al, 3   ;Always FAIL
    189                              <1> interruptExit:  ;Used to overwrite Int 2Eh
-   190 00000B19 48CF                <1>     iretq
+   190 00000BC9 48CF                <1>     iretq
    191                              <1> 
     16                                  
     17                                  Segment dseg data private align=16
@@ -2068,52 +2129,56 @@
      3                              <1> ;Write Once variables, ALL SET UP.
      4 00000000 ????????????????    <1> pDosMgrPsp  dq ?    ;Pointer to the DOSMGR PSP
      5 00000008 ????????????????    <1> pDosSda     dq ?    ;Pointer to the DOS SDA
-     6 00000010 ????????????????    <1> pPcbTbl     dq ?    ;Pointer to the Per-Task data area table.
-     7 00000018 ????????            <1> dPcbLen     dd ?    ;Length of each pcb
-     8 0000001C ????????            <1> dSdaLen     dd ?    ;Use the longer length. Change this in the future...
-     9 00000020 ????????            <1> dMaxSesIndx dd ?    ;Maximum screen session index! Max Session number = 7.
-    10                              <1> 
-    11                              <1> ;The below is a temp var until we make a good routine for if the 
-    12                              <1> ; top level program of a session exits
-    13 00000024 ????????????????    <1> pCmdShell   dq ?    ;Pointer to the command shell to launch
-    14                              <1> 
-    15                              <1> ;Shell to launch on sessions. 
-    16                              <1> ;Read from the CMD= string in the environment or passed by cmd line argument.
-    17 0000002C ??????????          <1> inStr       db 5 dup (?)
-    18                              <1> ;newShell    db 67 dup (?) 
-    19                              <1> 
-    20                              <1> ;Dynamic variables below
+     6 00000010 ????????            <1> dSdaLenMin  dd ?    ;Length of SDA that needs to be swapped if not in DOS.
+     7 00000014 ????????            <1> dSdaLen     dd ?    ;Full SDA length
+     8 00000018 ????????????????    <1> pPcbTbl     dq ?    ;Ptr to the first PCB SOTH.
+     9 00000020 ????????            <1> dPcbLen     dd ?    ;Length of each pcb
+    10 00000024 ????????            <1> dMaxTask    dd ?    ;Var version of MAX_TASK
+    11 00000028 ????????            <1> dMaxSesIndx dd ?    ;Maximum screen session index! Max Session number = 7.
+    12                              <1> 
+    13                              <1> ;The below is a temp var until we make a good routine for if the 
+    14                              <1> ; top level program of a session exits
+    15 0000002C ????????????????    <1> pCmdShell   dq ?    ;Pointer to the command shell to launch
+    16                              <1> 
+    17                              <1> ;Shell to launch on sessions. 
+    18                              <1> ;Read from the CMD= string in the environment or passed by cmd line argument.
+    19 00000034 ??????????          <1> inStr       db 5 dup (?)
+    20                              <1> ;newShell    db 67 dup (?) 
     21                              <1> 
-    22                              <1> ;Screen Session management dataPcb
-    23 00000031 ??                  <1> bCurScrNum  db ?    ;Contains the current screen number!
-    24 00000032 ??                  <1> bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
-    25                              <1> 
-    26 00000033 ??                  <1> bSM_Req     db ?    ;If set, the byte below indicates the requested screen
-    27 00000034 ??                  <1> bSM_Req_Scr db ?    ;Screen number to swap to
-    28                              <1> 
-    29                              <1> ;Thread management
-    30 00000035 ????????            <1> dCurThread    dd ?    ;Task number. Offset into the PCB table.
-    31 00000039 ????????????????    <1> pCurThread    dq ?    ;Ptr to the current thread.
-    32                              <1> 
-    33                              <1> ;Supported Critical section locks
-    34 00000041 <res Ch>            <1> dosLock     db critLock_size dup (?)    ;Critical section lock
-    35 0000004D <res Ch>            <1> drvLock     db critLock_size dup (?)    ;Critical section lock
-    36                              <1> 
-    37                              <1> ;Prioritised List pointers
-    38                              <1> scheduleLists:
-    39 00000059 <res 2A0h>          <1>     db 32*schedHead_size dup (?)    ;32 schedules, 0-31
-    40                              <1> 
-    41 000002F9 ????????????????    <1> sleepPtr    dq ?    ;Pointer to the head of the sleep list
+    22                              <1> ;Dynamic variables below
+    23                              <1> 
+    24                              <1> ;Screen Session management data
+    25 00000039 ??                  <1> bCurScrNum  db ?    ;Contains the current screen number!
+    26 0000003A ??                  <1> bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
+    27                              <1> 
+    28 0000003B ??                  <1> bSM_Req     db ?    ;If set, the byte below indicates the requested screen
+    29 0000003C ??                  <1> bSM_Req_Scr db ?    ;Screen number to swap to
+    30                              <1> 
+    31                              <1> ;Thread management
+    32 0000003D ????????            <1> dCurThread  dd ?    ;Task number. Offset into the PCB table.
+    33 00000041 ????????????????    <1> pCurThread  dq ?    ;Ptr to the current thread.
+    34                              <1> 
+    35                              <1> ;Supported Critical section locks
+    36 00000049 <res Ch>            <1> dosLock     db critLock_size dup (?)    ;Critical section lock
+    37 00000055 <res Ch>            <1> drvLock     db critLock_size dup (?)    ;Critical section lock
+    38                              <1> 
+    39                              <1> ;List pointers
+    40 00000061 ????????????????    <1> pObjTblHdr  dq ?    ;Pointer to the first system object table.
+    41 00000069 ????????????????    <1> sleepPtr    dq ?    ;Pointer to the head of the sleep list
     42                              <1> 
-    43                              <1> pIDT:
-    44 00000301 ????                <1>     .limit  dw ?
-    45 00000303 ????????????????    <1>     .base   dq ?
-    46                              <1> 
-    47                              <1> ;Timer variables
-    48 0000030B ??                  <1> bSliceCnt   db ?    ;Number of ticks since last swap
-    49 0000030C ??                  <1> bSliceSize  db ?    ;Number of ticks in one "timeslice"
-    50 0000030D ??                  <1> bTimerCnt   db ?    ;BIOS timer tracker (when it hits 55ms, do BIOS).
-    51 0000030E ????????????????    <1> pOldTimer   dq ?
+    43                              <1> scheduleLists:
+    44 00000071 <res 2A0h>          <1>     db 32*schedHead_size dup (?)    ;32 schedules, 0-31
+    45                              <1> 
+    46                              <1> ;BIOS related stuff
+    47                              <1> pIDT:
+    48 00000311 ????                <1>     .limit  dw ?
+    49 00000313 ????????????????    <1>     .base   dq ?
+    50                              <1> 
+    51                              <1> ;Timer variables
+    52 0000031B ??                  <1> bSliceCnt   db ?    ;Number of ticks since last swap
+    53 0000031C ??                  <1> bSliceSize  db ?    ;Number of ticks in one "timeslice"
+    54 0000031D ??                  <1> bTimerCnt   db ?    ;BIOS timer tracker (when it hits 55ms, do BIOS).
+    55 0000031E ????????????????    <1> pOldTimer   dq ?
     22                                  
     23                                  Segment sseg$int bss stack align=16
     24                                  ;This is the interrupt handlers' default stack. Only used during 

@@ -1,23 +1,26 @@
 ;Structures and equates for DOSMGR
 
 SM_SESSION  equ 0       ;Session number for Session Manager
-MAX_TASK    equ 32      ;Maximum of 32 tasks
+MAX_TASK    equ 32      ;Maximum of 32 tasks (0-31)
+MAX_SCHED   equ 31      ;Maximum Schedule number (31)
 
 ;Critical Lock
 struc critLock
     .dCount     dd ?    ;When this is zero, the lock is free
-    .pOwnerPcb dq ?    ;Ptr to the owner of the lock!
+    .pOwnerPcb  dq ?    ;Ptr to the owner of the lock!
 endstruc
 
 ;System Object Table header
 struc soth  
-    .pNextSoth  dq ?    ;Pointer to the next soth
-    .dSize      dd ?    ;Size of the soth
+    .pNextSoth  dq ?    ;Ptr to the next soth (-1 means end of chain)
+    .dNumEntry  dd ?    ;Number of entries in this SOTH
     .wObjType   dw ?    ;Type of object stored in the table
     .wObjectSz  dw ?    ;Size of the objects stored in this table
 endstruc
-    OBJ_PROCESS equ 1
-    OBJ_THREAD  equ 2
+
+OBJ_HDL     equ 0   ;A handle table header
+OBJ_PCB     equ 1   ;A PCB table header
+OBJ_PTDA    equ 2   ;A PTDA table header
 
 ;Schedule head, used to protect the schedules from multiple processors 
 ; simultaneously modifying the list in a multiprocessor system.
@@ -27,6 +30,8 @@ struc schedHead
     .pSchedHead dq ?    ;Ptr to next ptda in schedule to be executed
     .pSchedTail dq ?    ;Ptr to last ptda in schedule
 endstruc
+
+
 
 ;Per-task (thread) data area, keeps task (thread) state, including the 
 ; entries modified by the scheduler!
@@ -61,19 +66,20 @@ THREAD_DEAD         equ 2   ;Set if thread awaits reaping (a CWAIT call).
 THREAD_SLEEP        equ 4   ;Set if thread asleep.
 THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
 
+
 ;Process control block, keeps full process state.
 ;Must be aligned in size to 16 bytes.
 struc pcb  
 ;Process metadata
     .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
-    .hPcb       dd ?    ;Hdl to this pcb, currently just an offset
+    .hPcb       dd ?    ;Hdl to this pcb
     .hParPcb    dd ?    ;Handle to the parent pcb
     .dCsid      dd ?    ;CSID of this task chain (id of root program)
     .wFlags     dw ?    ;Task flags
 ;PTDA block, will eventually be replaced to a ptr to the 
 ; main thread ptda.
     alignb 10h
-    .sPtda       db ptda_size dup (?) ;Thread 0's PDTA
+    .sPtda      db ptda_size dup (?) ;Thread 0's PTDA
 ;Interrupt handles for replacing on task swap
     .pInt22h    dq ?    ;Int 22h handler on task switch
     .pInt23h    dq ?    ;Int 23h handler on task switch
@@ -83,7 +89,10 @@ struc pcb
     .sdaCopy:           ;Copy of the DOS sda for this session when not active
 endstruc
 
-struc mScrCap   ;Communication packet with MCON
+
+;Communication packet with MCON
+
+struc mScrCap  
     .wVer       dw ?    ;Upper byte, Major num (1). Lower byte, minor num (0)
     .wLen       dw ?    ;Length of structure (13 bytes)
     .bScrNum    db ?    ;Number of screens supported by driver

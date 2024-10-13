@@ -80,20 +80,29 @@ mConOk:
     lea rdx, noScreenStr
     jmp exitBad
 screensOk:
+;Now we set the maximum number of tasks
+    mov dword [dMaxTask], MAX_TASK
 ;Get the size of the SDA to know how big a pcb actually is.
-;    breakpoint
     mov eax, 5D06h
     int 21h
     mov qword [pDosSda], rsi
-    mov dword [dSdaLen], ecx    ;Save the larger value :)
+    mov dword [dSdaLen], ecx   
+    mov dword [dSdaLenMin], edx
     add ecx, pcb_size
+;Round up the pcb size to a 16-byte boundary.
+    add ecx, 0Fh
+    shr ecx, 4
+    shl ecx, 4
     mov dword [dPcbLen], ecx   ;Save the max length of a pcb.
-    mov eax, ecx
-    inc ebx     ;Add 1 to get number of sessions 
-    mul ebx     ;Multiply number of sessions by the size of pcb
-    add eax, 0Fh
-    shr eax, 4  ;Round result up by a paragraph, turn into number of paragraphs
-    mov ebx, eax    ;Put number of paragraphs into ebx
+;Now lets allocate a soth for pcbs
+    mov eax, ecx    
+    mov ebx, dword [dMaxTask]   ;Get the maximum number of tasks
+    mul ebx     ;Multiply size of pcb with max number of tasks.
+
+    add eax, soth_size  ;Add the SOTH header size too
+    add eax, 0Fh    ;Round result up by a paragraph
+    shr eax, 4      ;Turn into number of paragraphs
+    mov ebx, eax
     mov eax, 4800h
     int 21h
     jnc spaceOk
@@ -111,11 +120,20 @@ spaceOk:
     xor eax, eax
     rep stosb
     pop rdi         ;Get back the allocated block pointer!
-    mov qword [pPcbTbl], rdi    ;Store the pointer to the pcbTbl here
-    mov qword [pCurThread], rdi    ;The session manager is the current task
+;Now setup the SOTH with the right flags!
+    mov qword [rdi + soth.pNextSoth], -1    ;End of chain marker!
+    mov ecx, dword [dMaxTask]
+    mov dword [rdi + soth.dNumEntry], ecx   ;This table saves all tasks.
+    mov word [rdi + soth.wObjType], OBJ_PCB ;We use this for PCBs
+    mov ecx, dword [dPcbLen]
+    mov word [rdi + soth.wObjectSz], cx     ;This is the object size
+    mov qword [pObjTblHdr], rdi ;Save the pointer to the first object table here
+;Now set up the PCB Table information
+    mov qword [pPcbTbl], rdi    ;Store ptr to the first pcb soth here
+    add rdi, soth_size          ;Go to the first entry here
+    mov qword [pCurThread], rdi ;The session manager is the current task
     mov dword [dCurThread], SM_SESSION
 ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
-;    breakpoint
     lea rdi, qword [rdi + pcb.sdaCopy]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Copy over the SDA as it stands now, in peacetime!
@@ -162,10 +180,8 @@ spaceOk:
 ;Place 0202h flags, PSPptr in r8 and r9 and rax in rax on the register stack.
 
 ;Prepare the sda copy pointer
-;    breakpoint
-    mov rdi, qword [pPcbTbl]
-    mov ecx, dword [dPcbLen]
-    add rdi, rcx    ;Go to the first user task PCB
+    mov ecx, 1      ;Goto the first pcb 
+    call getPcbPtr  ;Get the ptr in rdi
 
     sub rsp, loadProg_size  ;Make space for the loadprog structure
     mov rbp, rsp
@@ -179,7 +195,6 @@ spaceOk:
     mov qword [rbp + loadProg.pfcb1], rax
     lea rax, qword [r8 + psp.fcb2]
     mov qword [rbp + loadProg.pfcb2], rax
-;   breakpoint
 loadLp:
     xor eax, eax
     mov qword [rbp + loadProg.initRSP], rax ;Reset the return values to 0
@@ -221,8 +236,12 @@ loadLp:
     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 7*8], rbx  ;PSP ptr @ r9
     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl + 8*8], rbx  ;PSP ptr @ r8
     mov qword [rdi + pcb.sPtda + ptda.sRegsTbl], 0202h      ;Flags!
-;Make sure to save the screen number assigned to this task!
-    mov dword [rdi + pcb.hScrnNum], ecx    ;Save the screen number of task!
+;Make sure to save the screen number and process information!
+    mov dword [rdi + pcb.hScrnNum], ecx     ;Save the screen number of task!
+    mov dword [rdi + pcb.hPcb], ecx ;This is also the count of the task!
+    mov dword [rdi + pcb.hParPcb], ecx 
+    mov dword [rdi + pcb.dCsid], ecx 
+
 ;Now copy the SDA into the pcb SDA
     push rcx
     mov rsi, qword [pDosSda]
@@ -245,7 +264,10 @@ loadLp:
 ;Setup the default int 22h and int 23h of the SM in the PSP since we are our
 ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
 ; shell.
-    mov rsi, qword [pPcbTbl]   ;Get the PCB table entry of SM
+    xor ecx, ecx    ;SM Hdl
+    call getPcbPtr  ;Get the ptr in rdi 
+    mov rsi, rdi    ;Move ptr to rsi
+
     lea rdx, i22hShell
     mov qword [r8 + psp.oldInt22h], rdx
     mov qword [rsi + pcb.pInt22h], rdx
@@ -271,7 +293,7 @@ loadLp:
 ;Now add all the tasks's we've just created to this list
     xor ecx, ecx
     call getPcbPtr     ;Get pcb pointer in rdi for task 0
-    call getThreadPtr   ;Get a pointer to the first thread block of rdi in rbp
+    call getThreadPtr  ;Get ptr to the first ptda of rdi in rbp
     inc dword [rsi + schedHead.dNumEntry]
     mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!

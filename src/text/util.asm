@@ -36,18 +36,28 @@ setIntVector:
 
 
 getPcbPtr:
+;Return a ptr to the requested PCB in rdi
 ;Input: ecx = Number of the pcb to get the pointer of!
 ;Output: rdi -> PCB requested
-    mov rdi, qword [pPcbTbl]
-    test ecx, ecx   ;Pick off the case where session number is 0.
-    retz
+    mov rdi, qword [pPcbTbl] ;Get head of SFT pointer
+.walk:
+    cmp ecx, dword [rdi + soth.dNumEntry]
+    jb .thisTable
+    sub ecx, dword [rdi + soth.dNumEntry] ;Subtract
+    mov rdi, qword [rdi + soth.pNextSoth] ;Goto next table
+    cmp rdi, -1
+    jne .walk
+    stc
+    return
+.thisTable:
     push rax
-    push rcx
+    push rdx
     mov eax, dword [dPcbLen]
-    mul ecx 
-    add rdi, rax
-    pop rcx
+    mul ecx
+    add rdi, rax    ;Shift rdi to go to SFT entry in current table
+    pop rdx
     pop rax
+    add rdi, soth_size  ;Go past the header
     return
 
 getThreadPtr:
@@ -61,7 +71,7 @@ getSchedHeadPtr:
 ;Input: al = Number of the schedule you desire (0-31)
     push rax
     push rbx
-    mov ebx, 31
+    mov ebx, MAX_SCHED
     sub ebx, eax    ;Get the reverse order schedule number in ebx
     mov eax, schedHead_size
     mul ebx 

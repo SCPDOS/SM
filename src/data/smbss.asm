@@ -3,9 +3,11 @@
 ;Write Once variables, ALL SET UP.
 pDosMgrPsp  dq ?    ;Pointer to the DOSMGR PSP
 pDosSda     dq ?    ;Pointer to the DOS SDA
-pPcbTbl     dq ?    ;Pointer to the Process Control Block table.
+dSdaLenMin  dd ?    ;Length of SDA that needs to be swapped if not in DOS.
+dSdaLen     dd ?    ;Full SDA length
+pPcbTbl     dq ?    ;Ptr to the first PCB SOTH.
 dPcbLen     dd ?    ;Length of each pcb
-dSdaLen     dd ?    ;Use the longer length. Change this in the future...
+dMaxTask    dd ?    ;Var version of MAX_TASK
 dMaxSesIndx dd ?    ;Maximum screen session index! Max Session number = 7.
 
 ;The below is a temp var until we make a good routine for if the 
@@ -19,7 +21,7 @@ inStr       db 5 dup (?)
 
 ;Dynamic variables below
 
-;Screen Session management dataPcb
+;Screen Session management data
 bCurScrNum  db ?    ;Contains the current screen number!
 bScrnIoOk   db ?    ;Set if the screen can be IO'ed to/from! Used by CON!
 
@@ -34,12 +36,14 @@ pCurThread  dq ?    ;Ptr to the current thread.
 dosLock     db critLock_size dup (?)    ;Critical section lock
 drvLock     db critLock_size dup (?)    ;Critical section lock
 
-;Prioritised List pointers
+;List pointers
+pObjTblHdr  dq ?    ;Pointer to the first system object table.
+sleepPtr    dq ?    ;Pointer to the head of the sleep list
+
 scheduleLists:
     db 32*schedHead_size dup (?)    ;32 schedules, 0-31
 
-sleepPtr    dq ?    ;Pointer to the head of the sleep list
-
+;BIOS related stuff
 pIDT:
     .limit  dw ?
     .base   dq ?
