@@ -71,13 +71,12 @@ THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
 ;Must be aligned in size to 16 bytes.
 struc pcb  
 ;Process metadata
-    .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
     .hPcb       dd ?    ;Hdl to this pcb
     .hParPcb    dd ?    ;Handle to the parent pcb
     .dCsid      dd ?    ;CSID of this task chain (id of root program)
-    .wFlags     dw ?    ;Task flags
-;PTDA block, will eventually be replaced to a ptr to the 
-; main thread ptda.
+    .hScrnNum   dd ?    ;Handle to the session (byte number of the screen)
+    .wFlags     dw ?    ;Process flags
+;PTDA block, refers to PTDA 0 for this process
     alignb 10h
     .sPtda      db ptda_size dup (?) ;Thread 0's PTDA
 ;Interrupt handles for replacing on task swap

@@ -131,8 +131,8 @@ spaceOk:
 ;Now set up the PCB Table information
     mov qword [pPcbTbl], rdi    ;Store ptr to the first pcb soth here
     add rdi, soth_size          ;Go to the first entry here
-    mov qword [pCurThd], rdi ;The session manager is the current task
-    mov dword [hCurThd], SM_SESSION
+    mov qword [pCurPtda], rdi ;The session manager is the current task
+    mov dword [hCurPtda], SM_SESSION
 ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
     lea rdi, qword [rdi + pcb.sdaCopy]
     mov ecx, dword [dSdaLen]
