@@ -984,7 +984,7 @@
    293                              <1> ;Now add all the tasks's we've just created to this list
    294 000003C7 31C9                <1>     xor ecx, ecx
    295 000003C9 E8F1050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task 0
-   296 000003CE E820060000          <1>     call getThreadPtr  ;Get ptr to the first ptda of rdi in rbp
+   296 000003CE E820060000          <1>     call getRootPtdaPtr  ;Get ptr to the first ptda of rdi in rbp
    297 000003D3 FF4601              <1>     inc dword [rsi + schedHead.dNumEntry]
    298 000003D6 48896E05            <1>     mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
    299 000003DA 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
@@ -993,7 +993,7 @@
    302 000003E0 3B0D(28000000)      <1>     cmp ecx, dword [dMaxSesIndx]
    303 000003E6 771B                <1>     ja schedExit
    304 000003E8 E8D2050000          <1>     call getPcbPtr     ;Get pcb pointer in rdi for task ecx
-   305 000003ED E801060000          <1>     call getThreadPtr   ;Get ptr to the first ptda of rdi in rbp
+   305 000003ED E801060000          <1>     call getRootPtdaPtr   ;Get ptr to the first ptda of rdi in rbp
    306 000003F2 488B7E0D            <1>     mov rdi, qword [rsi + schedHead.pSchedTail] ;Get the last entry in the sched
    307 000003F6 48896F1A            <1>     mov qword [rdi + ptda.pNSlepPtda], rbp    ;rbp comes after this 
    308 000003FA 48896E0D            <1>     mov qword [rsi + schedHead.pSchedTail], rbp ;This ptda is the new last ptda
@@ -1648,7 +1648,7 @@
    100 0000090C 31C9                <1>     xor ecx, ecx
    101                              <1> .lp:
    102 0000090E E8AC000000          <1>     call getPcbPtr  ;Get the ptr in rdi
-   103 00000913 E8DB000000          <1>     call getThreadPtr   ;Get ptr to the first PTDA in rbp
+   103 00000913 E8DB000000          <1>     call getRootPtdaPtr   ;Get ptr to the first PTDA in rbp
    104 00000918 48395D2A            <1>     cmp qword [rbp + ptda.qEventId], rbx
    105 0000091C 7515                <1>     jne .gotoNext
    106                              <1> ;Here signal this thread to run! Set awake code, clear sleep and set alive!
@@ -1758,9 +1758,9 @@
     61                              <1>     return
     13 000009F2 C3                  <2>  ret
     62                              <1> 
-    63                              <1> getThreadPtr:
+    63                              <1> getRootPtdaPtr:
     64                              <1> ;Input: rdi -> PCB to get the thread pointer to
-    65                              <1> ;Output: rbp -> Primary (foreground) ptda of the process
+    65                              <1> ;Output: rbp -> Ptda 0 of the process
     66 000009F3 488D6F20            <1>     lea rbp, qword [rdi + pcb.sPtda]
     67                              <1>     return
     13 000009F7 C3                  <2>  ret

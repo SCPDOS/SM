@@ -60,9 +60,9 @@ getPcbPtr:
     add rdi, soth_size  ;Go past the header
     return
 
-getThreadPtr:
+getRootPtdaPtr:
 ;Input: rdi -> PCB to get the thread pointer to
-;Output: rbp -> Primary (foreground) ptda of the process
+;Output: rbp -> Ptda 0 of the process
     lea rbp, qword [rdi + pcb.sPtda]
     return
 

@@ -100,7 +100,7 @@ procRun:
     xor ecx, ecx
 .lp:
     call getPcbPtr  ;Get the ptr in rdi
-    call getThreadPtr   ;Get ptr to the first PTDA in rbp
+    call getRootPtdaPtr   ;Get ptr to the first PTDA in rbp
     cmp qword [rbp + ptda.qEventId], rbx
     jne .gotoNext
 ;Here signal this thread to run! Set awake code, clear sleep and set alive!

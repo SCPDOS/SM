@@ -293,7 +293,7 @@ loadLp:
 ;Now add all the tasks's we've just created to this list
     xor ecx, ecx
     call getPcbPtr     ;Get pcb pointer in rdi for task 0
-    call getThreadPtr  ;Get ptr to the first ptda of rdi in rbp
+    call getRootPtdaPtr  ;Get ptr to the first ptda of rdi in rbp
     inc dword [rsi + schedHead.dNumEntry]
     mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
@@ -302,7 +302,7 @@ schedLp:
     cmp ecx, dword [dMaxSesIndx]
     ja schedExit
     call getPcbPtr     ;Get pcb pointer in rdi for task ecx
-    call getThreadPtr   ;Get ptr to the first ptda of rdi in rbp
+    call getRootPtdaPtr   ;Get ptr to the first ptda of rdi in rbp
     mov rdi, qword [rsi + schedHead.pSchedTail] ;Get the last entry in the sched
     mov qword [rdi + ptda.pNSlepPtda], rbp    ;rbp comes after this 
     mov qword [rsi + schedHead.pSchedTail], rbp ;This ptda is the new last ptda
