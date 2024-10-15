@@ -70,6 +70,7 @@ THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
 ;Process control block, keeps full process state.
 ;Must be aligned in size to 16 bytes.
 struc pcb  
+    .bPcbInUse  db ?    ;Set if this PCB is allocated
 ;Process metadata
     .hPcb       dd ?    ;Hdl to this pcb
     .hParPcb    dd ?    ;Handle to the parent pcb

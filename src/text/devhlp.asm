@@ -13,7 +13,7 @@ devHlp:
     cmp edx, DevHlp_ConsInputFilter
     je consInputFilter  
     cmp edx, DevHlp_Signal_SM
-    je swapSes      
+    je signalSM      
     cmp edx, DevHlp_ProcBlock
     je procBlock    
     cmp edx, DevHlp_ProcRun
@@ -46,11 +46,11 @@ consInputFilter:
     ;Here if the magic code was encounted.
     push rax
     xor eax, eax    ;Magic code requests a swap to screen zero!
-    call swapSes
+    call signalSM
     pop rax
     return
 
-swapSes:
+signalSM:
 ;Entered with al = Suggested screen number. If bigger than maxsesindex, error!
     push rax
     movzx eax, al

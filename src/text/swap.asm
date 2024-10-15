@@ -91,12 +91,8 @@ chooseNextTask:
 .noDrvLock:
     return   ;TMPTMP: Keep current task!
 ;Now we know we don't own the uninterruptable lock, we choose a task
-; to swap to. Check if the Screen Manager has told us what to swap to.
-; If it hasn't, we check if the task screen is the same as the current 
-; screen. If it isnt, swap to the task on that screen. Else, swap
-; to the next task that isn't asleep. If all tasks are asleep then 
-; pick the next task and wait on it.
-;rdi points to the current task.
+; to swap to. rdi points to the current task.
+    
 
 ;End by setting the new task and signalling procrun on this
     mov dword [hCurPtda], ecx  ;Store the task number 
@@ -163,3 +159,14 @@ taskSwitch:
     xchg qword [pCurPtda], rbx  ;Now swap things back  
     popfq   ;Pop flags back right at the end :)
     return
+
+initScreen:
+;This routine initialises/resets a screen
+
+
+screenSwitch:
+;This routine enacts the screen switch. This will be exposed to standalone SM 
+; via an undocumented Int 2Fh call and then via DLL... hopefully.
+;Input: al = Screen number
+;Output: Screen changed to al or if al is too large, return error (CF=CY)
+

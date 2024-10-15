@@ -7,9 +7,9 @@ BITS 64
 
 Segment cseg code private align=16
 %include "./src/text/init.asm"
-%include "./src/text/disp.asm"
+%include "./src/text/devhlp.asm"
 %include "./src/text/int.asm"
-%include "./src/text/switch.asm"
+%include "./src/text/swap.asm"
 %include "./src/text/proc.asm"
 %include "./src/text/util.asm"
 %include "./src/text/shell.asm"

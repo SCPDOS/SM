@@ -6,7 +6,7 @@ doSleepMgmt:
     push rdi
     push rsi
     xor esi, esi    ;Zero the "previous" pointer
-    mov rdi, qword [sleepPtr]
+    mov rdi, qword [pHdSlpList]
 .lp:
     test rdi, rdi
     jz .exit
@@ -19,18 +19,8 @@ doSleepMgmt:
     or word [rdi + ptda.wFlags], THREAD_ALIVE
 ;Now set that this task is being awoken due to timeout wakeup
     mov dword [rdi + ptda.dAwakeCode], AWAKE_TIMEOUT
-;Here take the ptda out of the sleep list.
-    push rax
-    mov rax, qword [rdi + ptda.pNSlepPtda]    ;Get the next PTDA ptr in rax
-    test rsi, rsi   ;Are we replacing the first ptda in the list?
-    jnz .noHead
-    mov qword [sleepPtr], rax ;If so, put the link into the head
-    mov rdi, rax    ;Move rdi to the new head of the list
-    pop rax
-    jmp short .lp   ;And go again!
-.noHead:
-    mov qword [rsi + ptda.pNSlepPtda], rax ;Else in the ptda
-    pop rax
+    call remFromSleepList   ;Remove ptda in rdi from sleep list
+    jmp short .lp
 .gotoNext:
     mov rsi, rdi    ;Make the current ptda the anchor
     mov rdi, qword [rdi + ptda.pNSlepPtda]    ;Get the next ptda
@@ -74,8 +64,8 @@ procBlock:
 ;Now set the event id and the length for the sleep 
     mov qword [rdi + ptda.qEventId], rbx
     mov dword [rdi + ptda.dSleepLen], ecx
-    mov rsi, qword [sleepPtr]   ;Get the old head of the list
-    mov qword [sleepPtr], rdi   ;Place us at the head of the list
+    mov rsi, qword [pHdSlpList]   ;Get the old head of the list
+    mov qword [pHdSlpList], rdi   ;Place us at the head of the list
     mov qword [rdi + ptda.pNSlepPtda], rsi    ;Make the old head the next second
     call taskSwitch             ;And now we swap tasks!
     mov eax, dword [rdi + ptda.dAwakeCode] 
@@ -93,31 +83,54 @@ procRun:
 ;We go through each queue and find every single thread block.
 ;On entry:  rbx = Event id to awaken tasks on.
 ;On exit:   eax = Count of processes woken up. If zero, ZF=ZE.
-    push rcx
+    push rsi
     push rdi
-    push rbp
-    xor eax, eax    ;Use eax as the counter of free'd processes
-    xor ecx, ecx
+    pushfq
+    cli     ;No int when doing this (figure something better)
+    xor eax, eax    ;Zero our counter of awoken tasks
+    xor esi, esi    ;Zero the "previous" pointer
+    mov rdi, qword [pHdSlpList]
 .lp:
-    call getPcbPtr  ;Get the ptr in rdi
-    call getRootPtdaPtr   ;Get ptr to the first PTDA in rbp
-    cmp qword [rbp + ptda.qEventId], rbx
+    test rdi, rdi
+    jz .exit
+    cmp qword [rdi + ptda.qEventId], rbx
     jne .gotoNext
-;Here signal this thread to run! Set awake code, clear sleep and set alive!
-    mov dword [rbp + ptda.dAwakeCode], AWAKE_NORMAL
+;Awaken this task normally.
     and word [rbp + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
     or word [rbp + ptda.wFlags], THREAD_ALIVE
+    mov dword [rbp + ptda.dAwakeCode], AWAKE_NORMAL
     inc eax     ;Increment the counter
+    call remFromSleepList   ;Remove ptda in rdi from sleep list
+    jmp short .lp
 .gotoNext:
-    inc ecx ;Prepare to go to the next one
-    cmp ecx, dword [dMaxTask]
-    jne .lp
-    pop rbp
+    mov rsi, rdi    ;Now make current ptda the prevptr
+    mov rdi, qword [rdi + ptda.pNSlepPtda]    ;Get the next ptda
+    jmp short .lp
+.exit:
+    popfq
     pop rdi
-    pop rcx
+    pop rsi
     test eax, eax   ;Set ZF if appropriate
     return
 
+remFromSleepList:
+;Removes the ptda in rdi out of the sleep list!
+;Input: rdi -> ptda to be removed from sleeplist
+;       rsi -> 0 if head of the sleeplist or previous ptda in list
+;Now take the ptda out of the sleep list.
+    push rdx
+    xor edx, edx    ;Set rdx to the nullptr
+    xchg rdx, qword [rdi + ptda.pNSlepPtda] ;and swap nullptr with nextptr
+    mov rdi, rdx    ;Get the nextptr in rdi
+    pop rdx
+    test rsi, rsi   ;Are we replacing the first ptda in the list?
+    jnz .noHead
+    mov qword [pHdSlpList], rdi ;If so, put the link into the head
+    return
+.noHead:
+;Else store nextptr in prevptda nexptr
+    mov qword [rsi + ptda.pNSlepPtda], rdi
+    return
 
 fatalHalt:
 ;This is the handler if a fatal error occurs where we need to halt the 

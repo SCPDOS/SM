@@ -131,6 +131,7 @@ spaceOk:
 ;Now set up the PCB Table information
     mov qword [pPcbTbl], rdi    ;Store ptr to the first pcb soth here
     add rdi, soth_size          ;Go to the first entry here
+    mov byte [rdi + pcb.bPcbInUse], -1  ;Set to allocated
     mov qword [pCurPtda], rdi ;The session manager is the current task
     mov dword [hCurPtda], SM_SESSION
 ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
@@ -241,6 +242,7 @@ loadLp:
     mov dword [rdi + pcb.hPcb], ecx ;This is also the count of the task!
     mov dword [rdi + pcb.hParPcb], ecx 
     mov dword [rdi + pcb.dCsid], ecx 
+    mov byte [rdi + pcb.bPcbInUse], -1  ;Set to allocated
 
 ;Now copy the SDA into the pcb SDA
     push rcx
@@ -299,7 +301,7 @@ loadLp:
     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
 schedLp:
     inc ecx
-    cmp ecx, dword [dMaxSesIndx]
+    cmp ecx, dword [dMaxSesIndx]    ;We start by launching this amount of tasks.
     ja schedExit
     call getPcbPtr     ;Get pcb pointer in rdi for task ecx
     call getRootPtdaPtr   ;Get ptr to the first ptda of rdi in rbp
