@@ -29,7 +29,7 @@ bSM_Req     db ?    ;If set, the byte below indicates the requested screen
 bSM_Req_Scr db ?    ;Screen number to swap to
 
 ;Thread management
-hCurPtda     dd ?    ;Current Thread Handle
+hCurPtda    dd ?    ;Current Thread Handle
 pCurPtda    dq ?    ;Ptr to the current thread ptda.
 
 ;Supported Critical section locks
@@ -41,8 +41,8 @@ pObjTblHdr  dq ?    ;Pointer to the first system object table.
 ;The sleep list is a linked list of PDTAs
 pHdSlpList  dq ?    ;Ptr to the head of the sleep list (of PDTAs)
 
-scheduleLists:
-    db 32*schedHead_size dup (?)    ;32 schedules, 0-31
+schedBlk:   ;The schedule list block
+    db NUM_SCHED*schedHead_size dup (?)
 
 ;BIOS related stuff
 pIDT:

@@ -3,6 +3,7 @@
 SM_SESSION  equ 0       ;Session number for Session Manager
 MAX_TASK    equ 32      ;Maximum of 32 tasks (0-31)
 MAX_SCHED   equ 31      ;Maximum Schedule number (31)
+NUM_SCHED   equ MAX_SCHED + 1   ;Number of schedules
 
 ;Critical Lock
 struc critLock
@@ -22,10 +23,10 @@ OBJ_HDL     equ 0   ;A handle table header
 OBJ_PCB     equ 1   ;A PCB table header
 OBJ_PTDA    equ 2   ;A PTDA table header
 
-;Schedule head, used to protect the schedules from multiple processors 
-; simultaneously modifying the list in a multiprocessor system.
+;Schedule head, no lock as in a multiprocessor system we have a schedule
+; block per processor and don't share threads (for simplicity, for now).
+; We can introduce an atomic xfer system later.
 struc schedHead
-    .bLock      db ?    ;Set if this schedule is locked (no writes)
     .dNumEntry  dd ?    ;Number of entries in this schedule
     .pSchedHead dq ?    ;Ptr to next ptda in schedule to be executed
     .pSchedTail dq ?    ;Ptr to last ptda in schedule

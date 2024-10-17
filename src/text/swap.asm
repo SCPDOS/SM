@@ -93,6 +93,11 @@ chooseNextTask:
 ;Now we know we don't own the uninterruptable lock, we choose a task
 ; to swap to. rdi points to the current task.
     
+;1) Put this task on the back of its list.
+;2) Go through each list until we get to the first not-null task.
+;   If it is the same, find the next non-null task after it. 
+;   This is to prevent this task from getting all the timeslices.
+
 
 ;End by setting the new task and signalling procrun on this
     mov dword [hCurPtda], ecx  ;Store the task number 

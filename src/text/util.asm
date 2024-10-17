@@ -80,25 +80,3 @@ getSchedHeadPtr:
     pop rbx
     pop rax
     return 
-
-getScheduleLock:
-;Will attempt to get the lock for a schedule head. Will spin on it
-; until it can get it. 
-;Input: rsi -> Schedule head to obtain lock for.
-    push rax
-    push rbx
-    xor ebx, ebx
-    dec ebx     ;Make into -1
-.lp:
-    xor eax, eax    ;Set/Reset al to zero
-    ;If var = al, move bl (-1) into the lock. Else mov var into al.
-    lock cmpxchg byte [rsi + schedHead.bLock], bl
-    jnz .lp     ;If the var was not 0, check again!
-    pop rbx
-    pop rax
-    return
-
-
-releaseScheduleLock:
-    mov byte [rsi + schedHead.bLock], 0
-    return

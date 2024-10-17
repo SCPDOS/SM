@@ -291,13 +291,12 @@ loadLp:
 ;Now put every task into middle priority list (schedule 15)!
     mov al, 15
     call getSchedHeadPtr    ;Get the schedhead ptr in rsi
-    call getScheduleLock    ;Lock the schedule pointed to by rsi
 ;Now add all the tasks's we've just created to this list
     xor ecx, ecx
     call getPcbPtr     ;Get pcb pointer in rdi for task 0
     call getRootPtdaPtr  ;Get ptr to the first ptda of rdi in rbp
     inc dword [rsi + schedHead.dNumEntry]
-    mov qword [rsi + schedHead.pSchedHead], rbp ;This schedblk is the head
+    mov qword [rsi + schedHead.pSchedHead], rbp ;This is the head
     mov qword [rsi + schedHead.pSchedTail], rbp ;Tis also the tail!
 schedLp:
     inc ecx
@@ -311,7 +310,6 @@ schedLp:
     inc dword [rsi + schedHead.dNumEntry]       ;Added a new element to schedule
     jmp short schedLp
 schedExit:
-    call releaseScheduleLock
 
     jmp short i2ahJmp   ;Skip the timer stuff
 ;Now setup the timer infrastructure for the timer interrupt.
