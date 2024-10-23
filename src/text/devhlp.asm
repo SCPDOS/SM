@@ -52,6 +52,8 @@ consInputFilter:
 
 signalSM:
 ;Entered with al = Suggested screen number. If bigger than maxsesindex, error!
+;Passes the data to the SM "reciever" handler and then preempts by setting SM
+; thread 0 to standby. We need to keep a pointer to this thread PTDA
     push rax
     movzx eax, al
     cmp dword [dMaxSesIndx], eax

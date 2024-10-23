@@ -3,7 +3,7 @@
 EXTERN sm$intTOS
 
 
-awakenNewTask:
+runNewThread:
 ;Sets the DOS and DOSMGR state for the new task to run.
 ;Input: ecx = Task number (handle) to switch to.
 ;Output: ecx set as current task.
@@ -40,7 +40,7 @@ awakenNewTask:
     dec byte [bScrnIoOk]    ;Denote output ok!
     return
 
-sleepCurrentTask:
+waitCurrentThread:
 ;Puts the current task on ice, saves all of its relevant state in 
 ; the pcb and then returns to the caller.
     mov rdi, qword [pCurPtda]
@@ -65,10 +65,9 @@ sleepCurrentTask:
     mov qword [rdi + pcb.pInt2Eh], rbx
     return
 
-chooseNextTask:
-;Makes a choice of the next task. For now, its the next task,
-; unless the SM has been signalled through the keyboard. Furthermore, 
-; no task switch is enacted if we are in a critical section!
+chooseNextThread:
+;Makes a choice of the next thread.
+; o task switch is enacted if we are in a critical section!
 
 ;NOTE!! A task that owns a driver critical section (02h) MUST NOT be 
 ; interrupted. This is because the driver expects to have full control
@@ -136,9 +135,9 @@ taskSwitch:
     cld ;Ensure all writes occur in the right way.
     lea rsp, sm$intTOS  ;Now go to the interrupt stack
 
-    call sleepCurrentTask
-    call chooseNextTask     ;Sets the task variables for the new task
-    call awakenNewTask
+    call waitCurrentThread
+    call chooseNextThread     ;Sets the task variables for the new task
+    call runNewThread
 
     mov rbx, qword [pCurPtda]
 ;Skip reloading the flags here!
