@@ -135,7 +135,7 @@ spaceOk:
     mov qword [pCurPtda], rdi ;The session manager is the current task
     mov dword [hCurPtda], SM_SESSION
 ;Now copy the SDA over and the DOS state as things stand. rsi -> DOS SDA
-    lea rdi, qword [rdi + pcb.sdaCopy]
+    lea rdi, qword [rdi + pcb.sPtda + ptda.sdaCopy]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Copy over the SDA as it stands now, in peacetime!
 
@@ -247,7 +247,7 @@ loadLp:
 ;Now copy the SDA into the pcb SDA
     push rcx
     mov rsi, qword [pDosSda]
-    lea rdi, qword [rdi + pcb.sdaCopy]
+    lea rdi, qword [rdi + pcb.sPtda + ptda.sdaCopy]
     mov ecx, dword [dSdaLen]
     rep movsb   ;rdi now points to the next pcb
     pop rcx

@@ -75,7 +75,7 @@ getSchedHeadPtr:
     sub ebx, eax    ;Get the reverse order schedule number in ebx
     mov eax, schedHead_size
     mul ebx 
-    lea rsi, scheduleLists
+    lea rsi, schedBlk
     add rsi, rax
     pop rbx
     pop rax

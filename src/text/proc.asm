@@ -15,8 +15,7 @@ doSleepMgmt:
     dec dword [rdi + ptda.dSleepLen]
     jnz .gotoNext
 ;Start by awakening the task.
-    and word [rdi + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
-    or word [rdi + ptda.wFlags], THREAD_ALIVE
+    mov byte [rdi + ptda.bState], THREAD_READY
 ;Now set that this task is being awoken due to timeout wakeup
     mov dword [rdi + ptda.dAwakeCode], AWAKE_TIMEOUT
     call remFromSleepList   ;Remove ptda in rdi from sleep list
@@ -55,12 +54,8 @@ procBlock:
     push rdi
     mov rdi, qword [pCurPtda]
 ;Start by indicating that the thread can go to sleep.
-    or word [rdi + ptda.wFlags], THREAD_SLEEP
-    and word [rdi + ptda.wFlags], ~THREAD_ALIVE
-    test dh, dh
-    jz .noInt
-    or word [rdi + ptda.wFlags], THREAD_LIGHT_SLEEP
-.noInt:
+    mov byte [rdi + ptda.bState], THREAD_WAITING
+    mov byte [rdi + ptda.bSleepStat], dh    ;If <> 0, can be interrupted!
 ;Now set the event id and the length for the sleep 
     mov qword [rdi + ptda.qEventId], rbx
     mov dword [rdi + ptda.dSleepLen], ecx
@@ -96,8 +91,7 @@ procRun:
     cmp qword [rdi + ptda.qEventId], rbx
     jne .gotoNext
 ;Awaken this task normally.
-    and word [rbp + ptda.wFlags], ~(THREAD_SLEEP | THREAD_LIGHT_SLEEP)
-    or word [rbp + ptda.wFlags], THREAD_ALIVE
+    mov byte [rbp + ptda.bState], THREAD_READY
     mov dword [rbp + ptda.dAwakeCode], AWAKE_NORMAL
     inc eax     ;Increment the counter
     call remFromSleepList   ;Remove ptda in rdi from sleep list

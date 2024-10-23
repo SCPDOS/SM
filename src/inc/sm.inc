@@ -43,8 +43,9 @@ struc ptda
 ;Here begins the actual PTDA.
     .pPcb       dq ?    ;Ptr to the owning pcb (process)
     .pNProcPtda dq ?    ;Ptr to the next ptda owned by the process
-    .wFlags     dw ?    ;Flags for the Thread Control Block
+    .bState     db ?    ;State of the thread
 ;Sleep and Blocking States
+    .bSleepStat db ?    ;If set, sleep can be interrupted
     .pNSlepPtda dq ?    ;Ptr to the next ptda in the sleep chain
     .dSleepLen  dd ?    ;Sleep length in ~ms, 0 mean indefinite
     .dAwakeCode dd ?    ;Non-zero codes indicating why task was woken up
@@ -55,18 +56,41 @@ struc ptda
     .boS:
     ;alignb 16
     ;.pFPUState  dq 512 dup (?)  ;Extended state storage
+;Per-process DOS state
+    .sdaCopy:           ;Copy of the DOS sda for this session when not active
 endstruc
 
+;Thread awakening states. Used to indicate why a thread was brought out of 
+; waiting to a standby/ready state
 AWAKE_NORMAL        equ 0   ;Normal task awake code
 AWAKE_TIMEOUT       equ 1   ;Task was awoken by timeout
 AWAKE_INTER         equ 2   ;Task was interrupted
 AWAKE_STARVING      equ 3   ;Awoken by scheduler because system was starving
 
-THREAD_ALIVE        equ 1   ;Set if thread alive.
-THREAD_DEAD         equ 2   ;Set if thread awaits reaping (a CWAIT call).
-THREAD_SLEEP        equ 4   ;Set if thread asleep.
-THREAD_LIGHT_SLEEP  equ 8   ;Set if thread can be awakened prematurely.
-
+;Thread states
+THREAD_INIT         equ 0   ;When we allocate the thread block.
+;When we allocate a thread block, we clear the struct to zero hence this value
+THREAD_READY        equ 1   ;Ready to run on current h/w thread.
+;A thread in this state is in the ready queue for the selected priority for 
+; the selected hw thread.
+THREAD_RUNNING      equ 2   ;Currently running thread!
+THREAD_STANDBY      equ 3   ;Next thread to run on a particular hw thrd
+;Threads in STANDBY can be preempted by higher priority thread if one 
+; becomes available. If this is the case the thread is returned back to ready
+; and the next "second to run" thread is set to standby.
+THREAD_TERMINATED   equ 4   ;Set if thread awaits reaping (a CWAIT call).
+THREAD_WAITING      equ 5   ;Contains specific informaing in wait fields
+;When a thread is blocked due to devblk or sleep this is the state the 
+; thread is stored in. More info is set in the waiting metadata field.
+THREAD_TRANSITION   equ 6   ;NOT USED, waiting for Stack to be paged in
+THREAD_DEF_READY    equ 7   ;Ready to run, need to allocate to h/w thread
+;Deferred ready processes are waiting to be allocated to a hw thread.
+; Once a process is ready w/o a hw thread this gets set and then we 
+; select a hw thread to run on. Currently there is only one. Thus this
+; will only ever be seen when a process is coming out of INIT.
+THREAD_GATE_WAITING equ 8   ;Waiting on a special kernel object (Crit 1/2)
+;Needed to indicate that we are not in a normal wait and that this thread
+; is to wait until a kernel lock is freed.
 
 ;Process control block, keeps full process state.
 ;Must be aligned in size to 16 bytes.
@@ -86,8 +110,6 @@ struc pcb
     .pInt23h    dq ?    ;Int 23h handler on task switch
     .pInt24h    dq ?    ;Int 24h handler on task switch
     .pInt2Eh    dq ?    ;Int 2Eh handler on task switch (for master CMD)
-;Per-process DOS state
-    .sdaCopy:           ;Copy of the DOS sda for this session when not active
 endstruc
 
 

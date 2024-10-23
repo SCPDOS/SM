@@ -41,11 +41,14 @@ shellMain:
     call puts
     lea rdx, waitStr    ;Now print the state of the session
     call puts
+    
     ;Now get the string to print
-    call getPcbPtr ;Get the pcb ptr in rdi
-    mov rdx, qword [rdi + pcb.sdaCopy + sda.currentPSP]    ;Get the PSPptr
-    call getProcName    ;Get the process name ptr for process of PSP in rdx
-    jnc .nameFound
+    ;THIS NEEDS TO BE REPLACED AND CURRENTLY DOESN'T WORK!
+    ;call getPcbPtr ;Get the pcb ptr in rdi
+    ;mov rdx, qword [rdi + pcb.sdaCopy + sda.currentPSP]    ;Get the PSPptr
+    ;call getProcName    ;Get the process name ptr for process of PSP in rdx
+    ;jnc .nameFound
+    
     lea rdx, noNameStr
     call puts
     jmp short .nextSession

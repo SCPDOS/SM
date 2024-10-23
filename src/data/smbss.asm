@@ -38,8 +38,8 @@ drvLock     db critLock_size dup (?)    ;Critical section lock
 
 ;List pointers
 pObjTblHdr  dq ?    ;Pointer to the first system object table.
-;The sleep list is a linked list of PDTAs
-pHdSlpList  dq ?    ;Ptr to the head of the sleep list (of PDTAs)
+;The sleep list is a linked list of ptdas
+pHdSlpList  dq ?    ;Ptr to the head of the sleep list (of ptdas)
 
 schedBlk:   ;The schedule list block
     db NUM_SCHED*schedHead_size dup (?)

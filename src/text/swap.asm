@@ -10,7 +10,8 @@ awakenNewTask:
 
 
 ;Set the SDA to the new tasks' SDA. 
-    lea rsi, qword [rbx + pcb.sdaCopy] ;Point rdi to the sda space
+    mov rbx, qword [pCurPtda]
+    lea rsi, qword [rbx + ptda.sdaCopy] ;Point rdi to the sda space
     mov rdi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Transfer over the SDA
@@ -44,7 +45,7 @@ sleepCurrentTask:
 ; the pcb and then returns to the caller.
     mov rdi, qword [pCurPtda]
     push rdi    ;Save the CurTask pointer for use later!
-    lea rdi, qword [rdi + pcb.sdaCopy] ;Point rdi to the sda space
+    lea rdi, qword [rdi + ptda.sdaCopy] ;Point rdi to the sda space
     mov rsi, qword [pDosSda]
     mov ecx, dword [dSdaLen]
     rep movsb   ;Transfer over the SDA
