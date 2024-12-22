@@ -422,11 +422,11 @@
    146                              <1> ; early accidents. Eventually, will replace this with a routine that 
    147                              <1> ; tries to launch a new instance of the program specified in the sm.ini 
    148                              <1> ; config file.
-   149 000001C8 488D1587050000      <1>     lea rdx, i22hHdlr   ;Install the tmp Int 22h handler!
+   149 000001C8 488D1590050000      <1>     lea rdx, i22hHdlr   ;Install the tmp Int 22h handler!
    150 000001CF B822250000          <1>     mov eax, 2522h
    151 000001D4 CD21                <1>     int 21h
    152                              <1> 
-   153 000001D6 488D1594050000      <1>     lea rdx, interruptExit  
+   153 000001D6 488D15A2050000      <1>     lea rdx, interruptExit  
    154 000001DD B82E250000          <1>     mov eax, 252Eh  ;Eliminate any COMMAND.COM hook that might be present!
    155 000001E2 CD21                <1>     int 21h
    156                              <1> 
@@ -476,7 +476,7 @@
    200 00000253 E9E1FEFFFF          <1>     jmp exitMcon
    201                              <1> .loadOk:
    202                              <1> ;rdi points to the psda for this session
-   203 00000258 488D05F7040000      <1>     lea rax, i22hHdlr
+   203 00000258 488D0500050000      <1>     lea rax, i22hHdlr
    204 0000025F 488907              <1>     mov qword [rdi + psda.pInt22h], rax
    205 00000262 B823350000          <1>     mov eax, 3523h  ;Get the default Int 23h handler!
    206 00000267 CD21                <1>     int 21h
@@ -484,7 +484,7 @@
    208 0000026D B824350000          <1>     mov eax, 3524h  ;Get the default Int 24h handler!
    209 00000272 CD21                <1>     int 21h
    210 00000274 48895F10            <1>     mov qword [rdi + psda.pInt24h], rbx
-   211 00000278 488D1DF2040000      <1>     lea rbx, interruptExit
+   211 00000278 488D1D00050000      <1>     lea rbx, interruptExit
    212 0000027F 48895F18            <1>     mov qword [rdi + psda.pInt2Eh], rbx
    213                              <1> ;   breakpoint
    214 00000283 488B5D20            <1>     mov rbx, qword [rbp + loadProg.initRSP]
@@ -519,13 +519,13 @@
    243                              <1> ; own Parent. No need to set the interrupt vectors, thats done on entry to the 
    244                              <1> ; shell.
    245 000002E5 488B35(08000000)    <1>     mov rsi, qword [pPsdaTbl]   ;Get the PSDA table entry of SM
-   246 000002EC 488D1573040000      <1>     lea rdx, i22hShell
+   246 000002EC 488D157C040000      <1>     lea rdx, i22hShell
    247 000002F3 4989500A            <1>     mov qword [r8 + psp.oldInt22h], rdx
    248 000002F7 488916              <1>     mov qword [rsi + psda.pInt22h], rdx
-   249 000002FA 488D156A040000      <1>     lea rdx, i23hHdlr
+   249 000002FA 488D1578040000      <1>     lea rdx, i23hHdlr
    250 00000301 49895012            <1>     mov qword [r8 + psp.oldInt23h], rdx
    251 00000305 48895608            <1>     mov qword [rsi + psda.pInt23h], rdx
-   252 00000309 488D155F040000      <1>     lea rdx, i24hHdlr
+   252 00000309 488D156D040000      <1>     lea rdx, i24hHdlr
    253 00000310 4989501A            <1>     mov qword [r8 + psp.oldInt24h], rdx
    254 00000314 48895610            <1>     mov qword [rsi + psda.pInt24h], rdx
    255                              <1> 
@@ -857,45 +857,45 @@
     10                              <1> shellMain:
     11                              <1> ;The shell main routine prints the number of sessions,
     12                              <1> ; the program names.
-    13 000005C7 E828010000          <1>     call resetScreen
+    13 000005C7 E831010000          <1>     call resetScreen
     14                              <1> ;Printing the screen header!
     15 000005CC 488D15(3B030000)    <1>     lea rdx, ttlStr
-    16 000005D3 E86A010000          <1>     call puts
+    16 000005D3 E873010000          <1>     call puts
     17 000005D8 488D15(54020000)    <1>     lea rdx, sessStr
-    18 000005DF E85E010000          <1>     call puts
+    18 000005DF E867010000          <1>     call puts
     19 000005E4 8B15(18000000)      <1>     mov edx, dword [dMaxSesIndx]    ;This is also number of USER sessions
     20 000005EA FFC2                <1>     inc edx     ;Add 1 to include the SM session
     21 000005EC 80C230              <1>     add dl, "0" ;Convert to ASCII char
-    22 000005EF E846010000          <1>     call putch
-    23 000005F4 E851010000          <1>     call putNewline
+    22 000005EF E84F010000          <1>     call putch
+    23 000005F4 E85A010000          <1>     call putNewline
     24 000005F9 488D15(03020000)    <1>     lea rdx, uline
-    25 00000600 E83D010000          <1>     call puts
-    26 00000605 E840010000          <1>     call putNewline
+    25 00000600 E846010000          <1>     call puts
+    26 00000605 E849010000          <1>     call putNewline
     27                              <1> ;Printing the sessions.
     28 0000060A B230                <1>     mov dl, "0"
-    29 0000060C E829010000          <1>     call putch
+    29 0000060C E832010000          <1>     call putch
     30 00000611 488D15(9C020000)    <1>     lea rdx, colonStr
-    31 00000618 E825010000          <1>     call puts
+    31 00000618 E82E010000          <1>     call puts
     32 0000061D 488D15(F8020000)    <1>     lea rdx, sesManStr
-    33 00000624 E819010000          <1>     call puts
-    34 00000629 E81C010000          <1>     call putNewline
+    33 00000624 E822010000          <1>     call puts
+    34 00000629 E825010000          <1>     call putNewline
     35                              <1> ;Now we print the name from each session's current PSP environment pointer.
     36 0000062E B901000000          <1>     mov ecx, 1  ;Start from this session number
     37                              <1> .printLp:
     38 00000633 89CA                <1>     mov edx, ecx
     39 00000635 80C230              <1>     add dl, "0" 
-    40 00000638 E8FD000000          <1>     call putch
+    40 00000638 E806010000          <1>     call putch
     41 0000063D 488D15(9C020000)    <1>     lea rdx, colonStr
-    42 00000644 E8F9000000          <1>     call puts
+    42 00000644 E802010000          <1>     call puts
     43 00000649 488D15(E8020000)    <1>     lea rdx, waitStr    ;Now print the state of the session
-    44 00000650 E8ED000000          <1>     call puts
+    44 00000650 E8F6000000          <1>     call puts
     45                              <1>     ;Now get the string to print
     46 00000655 E849FFFFFF          <1>     call getPsdaPtr ;Get the psda ptr in rdi
     47 0000065A 488B97C0000000      <1>     mov rdx, qword [rdi + psda.sdaCopy + sda.currentPSP]    ;Get the PSPptr
-    48 00000661 E89A000000          <1>     call getProcName    ;Get the process name ptr for process of PSP in rdx
+    48 00000661 E8A3000000          <1>     call getProcName    ;Get the process name ptr for process of PSP in rdx
     49 00000666 730E                <1>     jnc .nameFound
     50 00000668 488D15(1D030000)    <1>     lea rdx, noNameStr
-    51 0000066F E8CE000000          <1>     call puts
+    51 0000066F E8D7000000          <1>     call puts
     52 00000674 EB1A                <1>     jmp short .nextSession
     53                              <1> .nameFound:
     54 00000676 4889D7              <1>     mov rdi, rdx    ;Copy the ptr here to get the len of the ASCIIZ string
@@ -910,121 +910,123 @@
     63 0000068D CD21                <1>     int 21h
     64 0000068F 59                  <1>     pop rcx     ;Get back the psda number
     65                              <1> .nextSession:
-    66 00000690 E8B5000000          <1>     call putNewline
+    66 00000690 E8BE000000          <1>     call putNewline
     67 00000695 FFC1                <1>     inc ecx
     68 00000697 390D(18000000)      <1>     cmp dword [dMaxSesIndx], ecx   ;Keep going until dMaxSesIndx < ecx
     69 0000069D 7394                <1>     jae .printLp
     70                              <1> ;All printing done, now wait for input from user
     71 0000069F 488D15(C6020000)    <1>     lea rdx, helpStr
-    72 000006A6 E897000000          <1>     call puts
+    72 000006A6 E8A0000000          <1>     call puts
     73 000006AB 488D15(9F020000)    <1>     lea rdx, promptStr
-    74 000006B2 E88B000000          <1>     call puts
+    74 000006B2 E894000000          <1>     call puts
     75 000006B7 488D15(3D000000)    <1>     lea rdx, inStr
     76 000006BE 66C7020200          <1>     mov word [rdx], 0002h   ;Init the buffered string
     77 000006C3 B8000A0000          <1>     mov eax, 0A00h  ;Await buffered input
     78 000006C8 CD21                <1>     int 21h
     79 000006CA 0FB64A02            <1>     movzx ecx, byte [rdx + 2]
     80 000006CE 80F93F              <1>     cmp cl, "?"
-    81 000006D1 7421                <1>     je resetScreen
-    82 000006D3 80F931              <1>     cmp cl, "1"
-    83 000006D6 7215                <1>     jb badChoice
-    84 000006D8 80F939              <1>     cmp cl, "9"
-    85 000006DB 7710                <1>     ja badChoice
-    86 000006DD 80E930              <1>     sub cl, "0"
-    87 000006E0 390D(18000000)      <1>     cmp dword [dMaxSesIndx], ecx
-    88 000006E6 7205                <1>     jb badChoice
+    81 000006D1 0F84F0FEFFFF        <1>     je shellMain
+    82 000006D7 80F931              <1>     cmp cl, "1"
+    83 000006DA 7215                <1>     jb badChoice
+    84 000006DC 80F939              <1>     cmp cl, "9"
+    85 000006DF 7710                <1>     ja badChoice
+    86 000006E1 80E930              <1>     sub cl, "0"
+    87 000006E4 390D(18000000)      <1>     cmp dword [dMaxSesIndx], ecx
+    88 000006EA 7205                <1>     jb badChoice
     89                              <1> ;Jump with with cl containing the new (valid) session number
-    90 000006E8 E94DFDFFFF          <1>     jmp gotoSession 
+    90 000006EC E949FDFFFF          <1>     jmp gotoSession 
     91                              <1> badChoice:
     92                              <1> ;Beep at the user and then reset the screen, show display!
-    93 000006ED B207                <1>     mov dl, 07h ;Beep at the user (Do I want to do that?)
-    94 000006EF E846000000          <1>     call putch
-    95                              <1> resetScreen:            ;Now reset the screen!
-    96 000006F4 B802000000          <1>     mov eax, 2          ;Driver Reset screen command!
-    97 000006F9 FF15(1C000000)      <1>     call qword [pConIOCtl]
-    98                              <1>     return 
-    13 000006FF C3                  <2>  ret
-    99                              <1> 
-   100                              <1> ;Shell handy routines
-   101                              <1> getProcName:
-   102                              <1> ;Input: rdx -> PSP pointer to find the task name for!
-   103                              <1> ;Output: CF=NC: rdx -> Points to ASCIIZ process name
-   104                              <1> ;        CF=CY: rdx = 0, Process name not found
-   105                              <1> ;
-   106                              <1> ;Here we search for the double 00 and then check if it is 0001 and
-   107                              <1> ; pass the ptr to the word after.
-   108 00000700 488B523E            <1>     mov rdx, qword [rdx + psp.envPtr]   ;Get the environement pointer
-   109 00000704 FA                  <1>     cli
-   110 00000705 51                  <1>     push rcx
-   111 00000706 31C9                <1>     xor ecx, ecx
-   112 00000708 B9FF7F0000          <1>     mov ecx, 7FFFh  ;Max environment size
-   113                              <1> .gep0:
-   114 0000070D 66813A0000          <1>     cmp word [rdx], 0   ;Zero word?
-   115 00000712 740D                <1>     je short .gep1
-   116 00000714 48FFC2              <1>     inc rdx         ;Go to the next byte
-   117 00000717 FFC9                <1>     dec ecx
-   118 00000719 75F2                <1>     jnz short .gep0
-   119                              <1> .gep00:
-   120                              <1>     ;Failure here if we haven't hit the double null by the end of 32Kb
-   121 0000071B 59                  <1>     pop rcx
-   122 0000071C 31D2                <1>     xor edx, edx    ;Turn it into null pointer
-   123 0000071E F9                  <1>     stc     ;Set CF
-   124 0000071F EB17                <1>     jmp short .exit ;Exit reenabling the interrupts!
-   125                              <1> .gep1:
-   126 00000721 4881C202000000      <1>     add rdx, 2  ;Skip the double null
-   127 00000728 66813A0100          <1>     cmp word [rdx], 1   ;Check if one more string in environment
-   128 0000072D 75EC                <1>     jne .gep00
-   129 0000072F 4881C202000000      <1>     add rdx, 2  ;Skip the 0001 word. Should always clear CF
-   130 00000736 59                  <1>     pop rcx
-   131 00000737 F8                  <1>     clc     ;Clear CF
-   132                              <1> .exit:
-   133 00000738 FB                  <1>     sti
-   134                              <1>     return
-    13 00000739 C3                  <2>  ret
-   135                              <1> putch:
-   136 0000073A B800020000          <1>     mov eax, 0200h
-   137 0000073F CD21                <1>     int 21h
-   138                              <1>     return
-    13 00000741 C3                  <2>  ret
-   139                              <1> puts:
-   140 00000742 B800090000          <1>     mov eax, 0900h
-   141 00000747 CD21                <1>     int 21h
-   142                              <1>     return
-    13 00000749 C3                  <2>  ret
-   143                              <1> putNewline:
-   144 0000074A 488D15(00020000)    <1>     lea rdx, newlineStr
-   145 00000751 E9ECFFFFFF          <1>     jmp puts
-   146                              <1> 
-   147                              <1> ;------------------------------------------------------------
-   148                              <1> ;Default SM Int 22h Handler
-   149                              <1> ;------------------------------------------------------------
-   150                              <1> ;If this is ever executed, the session will enter a special 
-   151                              <1> ; state where the user is prompted to type in the name of
-   152                              <1> ; the program to launch in this session. 
-   153                              <1> ;For now, it will simply try and relaunch a program.
-   154                              <1> ;For for now, it will simply print a string and freeze.
-   155                              <1> ;This will never happen as no COMMAND.COM can be exited
-   156                              <1> ; with the defaults we have set up.
-   157                              <1> i22hHdlr:
-   158 00000756 488D15(ED010000)    <1>     lea rdx, sesFrozStr
-   159 0000075D B800090000          <1>     mov eax, 0900h
-   160 00000762 CD21                <1>     int 21h
-   161                              <1> .lp:
-   162 00000764 EBFE                <1>     jmp short .lp ;Enter an infinite loop
-   163                              <1> 
-   164                              <1> i22hShell:
-   165                              <1> ;Simply reset the screen and print the info again!
-   166 00000766 E989FFFFFF          <1>     jmp resetScreen
-   167                              <1> 
-   168                              <1> i23hHdlr:
-   169                              <1> ;Default i23 handler, relaunch the shell.
-   170                              <1> ;Not doing so will reenter the call on a newline...
-   171 0000076B F9                  <1>     stc
-   172 0000076C C20800              <1>     ret 8
-   173                              <1> i24hHdlr:
-   174 0000076F B003                <1>     mov al, 3   ;Always FAIL
-   175                              <1> interruptExit:  ;Used to overwrite Int 2Eh
-   176 00000771 48CF                <1>     iretq
+    93 000006F1 B207                <1>     mov dl, 07h ;Beep at the user (Do I want to do that?)
+    94 000006F3 E84B000000          <1>     call putch
+    95 000006F8 E9CAFEFFFF          <1>     jmp shellMain
+    96                              <1> resetScreen:            ;Now reset the screen!
+    97 000006FD B802000000          <1>     mov eax, 2          ;Driver Reset screen command!
+    98 00000702 FF15(1C000000)      <1>     call qword [pConIOCtl]
+    99                              <1>     return 
+    13 00000708 C3                  <2>  ret
+   100                              <1> 
+   101                              <1> ;Shell handy routines
+   102                              <1> getProcName:
+   103                              <1> ;Input: rdx -> PSP pointer to find the task name for!
+   104                              <1> ;Output: CF=NC: rdx -> Points to ASCIIZ process name
+   105                              <1> ;        CF=CY: rdx = 0, Process name not found
+   106                              <1> ;
+   107                              <1> ;Here we search for the double 00 and then check if it is 0001 and
+   108                              <1> ; pass the ptr to the word after.
+   109 00000709 488B523E            <1>     mov rdx, qword [rdx + psp.envPtr]   ;Get the environement pointer
+   110 0000070D FA                  <1>     cli
+   111 0000070E 51                  <1>     push rcx
+   112 0000070F 31C9                <1>     xor ecx, ecx
+   113 00000711 B9FF7F0000          <1>     mov ecx, 7FFFh  ;Max environment size
+   114                              <1> .gep0:
+   115 00000716 66813A0000          <1>     cmp word [rdx], 0   ;Zero word?
+   116 0000071B 740D                <1>     je short .gep1
+   117 0000071D 48FFC2              <1>     inc rdx         ;Go to the next byte
+   118 00000720 FFC9                <1>     dec ecx
+   119 00000722 75F2                <1>     jnz short .gep0
+   120                              <1> .gep00:
+   121                              <1>     ;Failure here if we haven't hit the double null by the end of 32Kb
+   122 00000724 59                  <1>     pop rcx
+   123 00000725 31D2                <1>     xor edx, edx    ;Turn it into null pointer
+   124 00000727 F9                  <1>     stc     ;Set CF
+   125 00000728 EB17                <1>     jmp short .exit ;Exit reenabling the interrupts!
+   126                              <1> .gep1:
+   127 0000072A 4881C202000000      <1>     add rdx, 2  ;Skip the double null
+   128 00000731 66813A0100          <1>     cmp word [rdx], 1   ;Check if one more string in environment
+   129 00000736 75EC                <1>     jne .gep00
+   130 00000738 4881C202000000      <1>     add rdx, 2  ;Skip the 0001 word. Should always clear CF
+   131 0000073F 59                  <1>     pop rcx
+   132 00000740 F8                  <1>     clc     ;Clear CF
+   133                              <1> .exit:
+   134 00000741 FB                  <1>     sti
+   135                              <1>     return
+    13 00000742 C3                  <2>  ret
+   136                              <1> putch:
+   137 00000743 B800020000          <1>     mov eax, 0200h
+   138 00000748 CD21                <1>     int 21h
+   139                              <1>     return
+    13 0000074A C3                  <2>  ret
+   140                              <1> puts:
+   141 0000074B B800090000          <1>     mov eax, 0900h
+   142 00000750 CD21                <1>     int 21h
+   143                              <1>     return
+    13 00000752 C3                  <2>  ret
+   144                              <1> putNewline:
+   145 00000753 488D15(00020000)    <1>     lea rdx, newlineStr
+   146 0000075A E9ECFFFFFF          <1>     jmp puts
+   147                              <1> 
+   148                              <1> ;------------------------------------------------------------
+   149                              <1> ;Default SM Int 22h Handler
+   150                              <1> ;------------------------------------------------------------
+   151                              <1> ;If this is ever executed, the session will enter a special 
+   152                              <1> ; state where the user is prompted to type in the name of
+   153                              <1> ; the program to launch in this session. 
+   154                              <1> ;For now, it will simply try and relaunch a program.
+   155                              <1> ;For for now, it will simply print a string and freeze.
+   156                              <1> ;This will never happen as no COMMAND.COM can be exited
+   157                              <1> ; with the defaults we have set up.
+   158                              <1> i22hHdlr:
+   159 0000075F 488D15(ED010000)    <1>     lea rdx, sesFrozStr
+   160 00000766 B800090000          <1>     mov eax, 0900h
+   161 0000076B CD21                <1>     int 21h
+   162                              <1> .lp:
+   163 0000076D EBFE                <1>     jmp short .lp ;Enter an infinite loop
+   164                              <1> 
+   165                              <1> i22hShell:
+   166                              <1> ;Simply reset the screen and print the info again!
+   167 0000076F E889FFFFFF          <1>     call resetScreen
+   168 00000774 E94EFEFFFF          <1>     jmp shellMain
+   169                              <1> 
+   170                              <1> i23hHdlr:
+   171                              <1> ;Default i23 handler, relaunch the shell.
+   172                              <1> ;Not doing so will reenter the call on a newline...
+   173 00000779 F9                  <1>     stc
+   174 0000077A C20800              <1>     ret 8
+   175                              <1> i24hHdlr:
+   176 0000077D B003                <1>     mov al, 3   ;Always FAIL
+   177                              <1> interruptExit:  ;Used to overwrite Int 2Eh
+   178 0000077F 48CF                <1>     iretq
     11                                  
     12                                  Segment dseg data private align=16
     13                                  %include "./src/data/smdata.asm"

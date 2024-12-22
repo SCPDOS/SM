@@ -78,7 +78,7 @@ shellMain:
     int 21h
     movzx ecx, byte [rdx + 2]
     cmp cl, "?"
-    je resetScreen
+    je shellMain
     cmp cl, "1"
     jb badChoice
     cmp cl, "9"
@@ -92,6 +92,7 @@ badChoice:
 ;Beep at the user and then reset the screen, show display!
     mov dl, 07h ;Beep at the user (Do I want to do that?)
     call putch
+    jmp shellMain
 resetScreen:            ;Now reset the screen!
     mov eax, 2          ;Driver Reset screen command!
     call qword [pConIOCtl]
@@ -163,7 +164,8 @@ i22hHdlr:
 
 i22hShell:
 ;Simply reset the screen and print the info again!
-    jmp resetScreen
+    call resetScreen
+    jmp shellMain
 
 i23hHdlr:
 ;Default i23 handler, relaunch the shell.
