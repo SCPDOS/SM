@@ -16,6 +16,7 @@ noExecStr   db "Error 0006: Unable to start up session",CR,LF,
 noIOCTLStr  db "Error 0007: Generic IOCTL error",CR,LF,"$"
 noStdinStr  db "Error 0008: STDIN Redirected from CON device",CR,LF,"$"
 noStdoutStr db "Error 0009: STDOUT Redirected from CON device",CR,LF,"$"
+alrInstStr  db "Error 0010: Session Manager already installed",CR,LF,"$"
 
 sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
 

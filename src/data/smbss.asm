@@ -23,6 +23,7 @@ bDefFlg     db ?    ;If set, defered session swap flag set!
 ;Read from the CMD= string in the environment or passed by cmd line argument.
 inStr       db 5 dup (?)
 ;newShell    db 67 dup (?) 
+oldInt2Fh   dq ?
 
 pIDT:
     .limit  dw ?

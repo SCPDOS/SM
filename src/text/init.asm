@@ -21,6 +21,14 @@ proceedBss:
     mov ecx, bseg_len
     xor eax, eax
     rep stosb
+;Check that SM is not already installed
+    mov eax, SM_SIG_2F << 8
+    int 2Fh
+    test al, al
+    jz .proceedInstall
+    lea rdx, alrInstStr
+    jmp short exitBad
+.proceedInstall:
 ;Check that STDIO is not redirected from the standard console device.
 ;This can be an AUX driver, the test for MCON compliance occurs below!
 ;If it is, exit complaining!
@@ -256,6 +264,13 @@ loadLp:
 ;Now setup the Int 2Ah infrastructure.
     lea rdx, i2AhDisp
     mov eax, 252Ah
+    int 21h
+;And Int 2Fh
+    mov eax, 352Fh
+    int 21h     ;Get the old handler ptr in rbx
+    mov qword [oldInt2Fh], rbx
+    lea rdx, i2FhDisp
+    mov eax, 252Fh
     int 21h
 ;Patch the DOS kernel to call Int 2Ah correctly.
 ;Go in reverse from rsi which points to the DOS SDA

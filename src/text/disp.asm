@@ -3,6 +3,20 @@
 ;------------------------------------------------------------
 
 EXTERN sm$intTOS
+;------------------------------------------------------------
+;Int 2Ah Dispatcher
+;------------------------------------------------------------
+i2FhDisp:
+    cmp ah, SM_SIG_2F  ;Session manager
+    jne .chain
+    test al, al ;Install check?
+    jnz .exit   ;Anything else is just a plain exit!
+    mov al, -1  ;Indicate we are installed!
+.exit:
+    iretq
+.chain:
+    jmp qword [oldInt2Fh]   ;Chain to the next handler
+
 
 ;------------------------------------------------------------
 ;Int 2Ah Dispatcher

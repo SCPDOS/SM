@@ -1,6 +1,7 @@
 ;Structures and equates for SM.EXE
 
 SM_SESSION  equ 0       ;Session number for Session Manager
+SM_SIG_2F   equ 0Ah     ;Session Manager multiplex number
 
 ;Critical Lock
 struc critLock
