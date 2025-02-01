@@ -889,24 +889,24 @@
     12                              <1> ; the program names.
     13 0000060E E831010000          <1>     call resetScreen
     14                              <1> ;Printing the screen header!
-    15 00000613 488D15(6B030000)    <1>     lea rdx, ttlStr
+    15 00000613 488D15(69030000)    <1>     lea rdx, ttlStr
     16 0000061A E873010000          <1>     call puts
-    17 0000061F 488D15(84020000)    <1>     lea rdx, sessStr
+    17 0000061F 488D15(82020000)    <1>     lea rdx, sessStr
     18 00000626 E867010000          <1>     call puts
     19 0000062B 8B15(18000000)      <1>     mov edx, dword [dMaxSesIndx]    ;This is also number of USER sessions
     20 00000631 FFC2                <1>     inc edx     ;Add 1 to include the SM session
     21 00000633 80C230              <1>     add dl, "0" ;Convert to ASCII char
     22 00000636 E84F010000          <1>     call putch
     23 0000063B E85A010000          <1>     call putNewline
-    24 00000640 488D15(33020000)    <1>     lea rdx, uline
+    24 00000640 488D15(31020000)    <1>     lea rdx, uline
     25 00000647 E846010000          <1>     call puts
     26 0000064C E849010000          <1>     call putNewline
     27                              <1> ;Printing the sessions.
     28 00000651 B230                <1>     mov dl, "0"
     29 00000653 E832010000          <1>     call putch
-    30 00000658 488D15(CC020000)    <1>     lea rdx, colonStr
+    30 00000658 488D15(CA020000)    <1>     lea rdx, colonStr
     31 0000065F E82E010000          <1>     call puts
-    32 00000664 488D15(28030000)    <1>     lea rdx, sesManStr
+    32 00000664 488D15(26030000)    <1>     lea rdx, sesManStr
     33 0000066B E822010000          <1>     call puts
     34 00000670 E825010000          <1>     call putNewline
     35                              <1> ;Now we print the name from each session's current PSP environment pointer.
@@ -915,16 +915,16 @@
     38 0000067A 89CA                <1>     mov edx, ecx
     39 0000067C 80C230              <1>     add dl, "0" 
     40 0000067F E806010000          <1>     call putch
-    41 00000684 488D15(CC020000)    <1>     lea rdx, colonStr
+    41 00000684 488D15(CA020000)    <1>     lea rdx, colonStr
     42 0000068B E802010000          <1>     call puts
-    43 00000690 488D15(18030000)    <1>     lea rdx, waitStr    ;Now print the state of the session
+    43 00000690 488D15(16030000)    <1>     lea rdx, waitStr    ;Now print the state of the session
     44 00000697 E8F6000000          <1>     call puts
     45                              <1>     ;Now get the string to print
     46 0000069C E849FFFFFF          <1>     call getPsdaPtr ;Get the psda ptr in rdi
     47 000006A1 488B97C0000000      <1>     mov rdx, qword [rdi + psda.sdaCopy + sda.currentPSP]    ;Get the PSPptr
     48 000006A8 E8A3000000          <1>     call getProcName    ;Get the process name ptr for process of PSP in rdx
     49 000006AD 730E                <1>     jnc .nameFound
-    50 000006AF 488D15(4D030000)    <1>     lea rdx, noNameStr
+    50 000006AF 488D15(4B030000)    <1>     lea rdx, noNameStr
     51 000006B6 E8D7000000          <1>     call puts
     52 000006BB EB1A                <1>     jmp short .nextSession
     53                              <1> .nameFound:
@@ -945,9 +945,9 @@
     68 000006DE 390D(18000000)      <1>     cmp dword [dMaxSesIndx], ecx   ;Keep going until dMaxSesIndx < ecx
     69 000006E4 7394                <1>     jae .printLp
     70                              <1> ;All printing done, now wait for input from user
-    71 000006E6 488D15(F6020000)    <1>     lea rdx, helpStr
+    71 000006E6 488D15(F4020000)    <1>     lea rdx, helpStr
     72 000006ED E8A0000000          <1>     call puts
-    73 000006F2 488D15(CF020000)    <1>     lea rdx, promptStr
+    73 000006F2 488D15(CD020000)    <1>     lea rdx, promptStr
     74 000006F9 E894000000          <1>     call puts
     75 000006FE 488D15(3D000000)    <1>     lea rdx, inStr
     76 00000705 66C7020200          <1>     mov word [rdx], 0002h   ;Init the buffered string
@@ -1023,7 +1023,7 @@
    143                              <1>     return
     13 00000799 C3                  <2>  ret
    144                              <1> putNewline:
-   145 0000079A 488D15(30020000)    <1>     lea rdx, newlineStr
+   145 0000079A 488D15(2E020000)    <1>     lea rdx, newlineStr
    146 000007A1 E9ECFFFFFF          <1>     jmp puts
    147                              <1> 
    148                              <1> ;------------------------------------------------------------
@@ -1037,7 +1037,7 @@
    156                              <1> ;This will never happen as no COMMAND.COM can be exited
    157                              <1> ; with the defaults we have set up.
    158                              <1> i22hHdlr:
-   159 000007A6 488D15(1D020000)    <1>     lea rdx, sesFrozStr
+   159 000007A6 488D15(1B020000)    <1>     lea rdx, sesFrozStr
    160 000007AD B800090000          <1>     mov eax, 0900h
    161 000007B2 CD21                <1>     int 21h
    162                              <1> .lp:
@@ -1126,66 +1126,66 @@
     18 000001D8 65642066726F6D2043- <1>
     18 000001E1 4F4E20646576696365- <1>
     18 000001EA 0D0A24              <1>
-    19 000001ED 4572726F7220303031- <1> alrInstStr  db "Error 0010: Session Manager already installed",CR,LF,"$"
+    19 000001ED 4572726F7220303031- <1> alrInstStr  db "Error 0010: Session Manager already running",CR,LF,"$"
     19 000001F6 303A2053657373696F- <1>
     19 000001FF 6E204D616E61676572- <1>
     19 00000208 20616C726561647920- <1>
-    19 00000211 696E7374616C6C6564- <1>
-    19 0000021A 0D0A24              <1>
+    19 00000211 72756E6E696E670D0A- <1>
+    19 0000021A 24                  <1>
     20                              <1> 
-    21 0000021D 0D0A53657373696F6E- <1> sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
-    21 00000226 2046726F7A656E0D0A- <1>
-    21 0000022F 24                  <1>
+    21 0000021B 0D0A53657373696F6E- <1> sesFrozStr  db CR,LF,"Session Frozen",CR,LF,"$"
+    21 00000224 2046726F7A656E0D0A- <1>
+    21 0000022D 24                  <1>
     22                              <1> 
     23                              <1> ;Shell Strings
-    24 00000230 0D0A24              <1> newlineStr  db CR,LF,"$"
-    25 00000233 2D2D2D2D2D2D2D2D2D- <1> uline       db 80 dup ("-"),"$"
-    25 0000023C 2D2D2D2D2D2D2D2D2D- <1>
-    25 00000245 2D2D2D2D2D2D2D2D2D- <1>
-    25 0000024E 2D2D2D2D2D2D2D2D2D- <1>
-    25 00000257 2D2D2D2D2D2D2D2D2D- <1>
-    25 00000260 2D2D2D2D2D2D2D2D2D- <1>
-    25 00000269 2D2D2D2D2D2D2D2D2D- <1>
-    25 00000272 2D2D2D2D2D2D2D2D2D- <1>
-    25 0000027B 2D2D2D2D2D2D2D2D24  <1>
-    26 00000284 202020202020202020- <1> sessStr     db 9 dup (SPC), "Current Sessions", 29 dup (SPC)
-    26 0000028D 43757272656E742053- <1>
-    26 00000296 657373696F6E732020- <1>
-    26 0000029F 202020202020202020- <1>
-    26 000002A8 202020202020202020- <1>
-    26 000002B1 202020202020202020  <1>
-    27 000002BA 4E756D626572206F66- <1> numSesStr   db "Number of sessions"
-    27 000002C3 2073657373696F6E73  <1>
-    28 000002CC 3A2024              <1> colonStr    db ": $"
+    24 0000022E 0D0A24              <1> newlineStr  db CR,LF,"$"
+    25 00000231 2D2D2D2D2D2D2D2D2D- <1> uline       db 80 dup ("-"),"$"
+    25 0000023A 2D2D2D2D2D2D2D2D2D- <1>
+    25 00000243 2D2D2D2D2D2D2D2D2D- <1>
+    25 0000024C 2D2D2D2D2D2D2D2D2D- <1>
+    25 00000255 2D2D2D2D2D2D2D2D2D- <1>
+    25 0000025E 2D2D2D2D2D2D2D2D2D- <1>
+    25 00000267 2D2D2D2D2D2D2D2D2D- <1>
+    25 00000270 2D2D2D2D2D2D2D2D2D- <1>
+    25 00000279 2D2D2D2D2D2D2D2D24  <1>
+    26 00000282 202020202020202020- <1> sessStr     db 9 dup (SPC), "Current Sessions", 29 dup (SPC)
+    26 0000028B 43757272656E742053- <1>
+    26 00000294 657373696F6E732020- <1>
+    26 0000029D 202020202020202020- <1>
+    26 000002A6 202020202020202020- <1>
+    26 000002AF 202020202020202020  <1>
+    27 000002B8 4E756D626572206F66- <1> numSesStr   db "Number of sessions"
+    27 000002C1 2073657373696F6E73  <1>
+    28 000002CA 3A2024              <1> colonStr    db ": $"
     29                              <1> 
-    30 000002CF 456E74657220796F75- <1> promptStr   db "Enter your desired session number...> $"
-    30 000002D8 722064657369726564- <1>
-    30 000002E1 2073657373696F6E20- <1>
-    30 000002EA 6E756D6265722E2E2E- <1>
-    30 000002F3 3E2024              <1>
-    31 000002F6 0D0A0A537472696B65- <1> helpStr     db CR,LF,LF,"Strike ? to reset the screen",CR,LF,"$"
-    31 000002FF 203F20746F20726573- <1>
-    31 00000308 657420746865207363- <1>
-    31 00000311 7265656E0D0A24      <1>
+    30 000002CD 456E74657220796F75- <1> promptStr   db "Enter your desired session number...> $"
+    30 000002D6 722064657369726564- <1>
+    30 000002DF 2073657373696F6E20- <1>
+    30 000002E8 6E756D6265722E2E2E- <1>
+    30 000002F1 3E2024              <1>
+    31 000002F4 0D0A0A537472696B65- <1> helpStr     db CR,LF,LF,"Strike ? to reset the screen",CR,LF,"$"
+    31 000002FD 203F20746F20726573- <1>
+    31 00000306 657420746865207363- <1>
+    31 0000030F 7265656E0D0A24      <1>
     32                              <1> ;Session default process names
-    33 00000318 5B576169745D2024    <1> waitStr     db "[Wait] $"
-    34 00000320 5B457869745D2024    <1> deadStr     db "[Exit] $"
-    35 00000328 5B52756E5D20205343- <1> sesManStr   db "[Run]  SCP/DOS Session Manager Shell$"
-    35 00000331 502F444F5320536573- <1>
-    35 0000033A 73696F6E204D616E61- <1>
-    35 00000343 676572205368656C6C- <1>
-    35 0000034C 24                  <1>
-    36 0000034D 53455353494F4E2053- <1> noNameStr   db        "SESSION SHELL (COMMAND.COM ?)$"
-    36 00000356 48454C4C2028434F4D- <1>
-    36 0000035F 4D414E442E434F4D20- <1>
-    36 00000368 3F2924              <1>
-    37 0000036B 202020202020202020- <1> ttlStr      db 28 dup (SPC), "SCP/DOS Session Manager",CR,LF,LF,"$"
-    37 00000374 202020202020202020- <1>
-    37 0000037D 202020202020202020- <1>
-    37 00000386 205343502F444F5320- <1>
-    37 0000038F 53657373696F6E204D- <1>
-    37 00000398 616E616765720D0A0A- <1>
-    37 000003A1 24                  <1>
+    33 00000316 5B576169745D2024    <1> waitStr     db "[Wait] $"
+    34 0000031E 5B457869745D2024    <1> deadStr     db "[Exit] $"
+    35 00000326 5B52756E5D20205343- <1> sesManStr   db "[Run]  SCP/DOS Session Manager Shell$"
+    35 0000032F 502F444F5320536573- <1>
+    35 00000338 73696F6E204D616E61- <1>
+    35 00000341 676572205368656C6C- <1>
+    35 0000034A 24                  <1>
+    36 0000034B 53455353494F4E2053- <1> noNameStr   db        "SESSION SHELL (COMMAND.COM ?)$"
+    36 00000354 48454C4C2028434F4D- <1>
+    36 0000035D 4D414E442E434F4D20- <1>
+    36 00000366 3F2924              <1>
+    37 00000369 202020202020202020- <1> ttlStr      db 28 dup (SPC), "SCP/DOS Session Manager",CR,LF,LF,"$"
+    37 00000372 202020202020202020- <1>
+    37 0000037B 202020202020202020- <1>
+    37 00000384 205343502F444F5320- <1>
+    37 0000038D 53657373696F6E204D- <1>
+    37 00000396 616E616765720D0A0A- <1>
+    37 0000039F 24                  <1>
     14                                  
     15                                  Segment bseg bss public align=16
     16                                  %include "./src/data/smbss.asm"
