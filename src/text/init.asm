@@ -1,5 +1,3 @@
-    EXTERN bseg_start
-    EXTERN bseg_len
     GLOBAL ep
 
 ;Init code for Session Manager.
@@ -17,10 +15,10 @@ exitBad:
     int 21h
 proceedBss:
 ;Clean the BSS
-    lea rdi, bseg_start
-    mov ecx, bseg_len
-    xor eax, eax
-    rep stosb
+    ;lea rdi, bseg_start
+    ;mov ecx, bseg_len
+    ;xor eax, eax
+    ;rep stosb
 ;Check that SM is not already installed
     mov eax, SM_SIG_2F << 8
     int 2Fh

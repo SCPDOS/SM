@@ -1,4 +1,8 @@
 
+Discarded input sections
+
+ .reloc         0x0000000000000000        0x0 dll stuff
+
 Memory Configuration
 
 Name             Origin             Length             Attributes
@@ -25,35 +29,35 @@ LOAD ./bin/sm.obj
                 0x0000000000001000                __size_of_heap_commit__ = 0x1000
                 0x0000000000000000                __loader_flags__ = 0x0
                 0x0000000000000160                __dll_characteristics__ = 0x160
+                0x0000000000000010                alignment = __section_alignment__
+                0x000000000000000f                alignMask = (alignment - 0x1)
+                0x0000000000000250                loadAddress = ((SIZEOF_HEADERS + alignMask) & ~ (alignMask))
 
-.text           0x0000000000000000        0x0
- .text          0x0000000000000000        0x0 ./bin/sm.obj
-
-sm$text         0x0000000000000000      0x7d0
+sm$text         0x0000000000000250      0x7c0
  ./bin/sm.obj(cseg)
- cseg           0x0000000000000000      0x7c8 ./bin/sm.obj
-                0x0000000000000000                ep
+ cseg           0x0000000000000250      0x7b4 ./bin/sm.obj
+                0x0000000000000250                ep
 
-sm$data         0x00000000000007d0      0x3a0
+sm$data         0x0000000000000a10      0x3a0
  ./bin/sm.obj(dseg)
- dseg           0x00000000000007d0      0x3a0 ./bin/sm.obj
+ dseg           0x0000000000000a10      0x3a0 ./bin/sm.obj
 
-.reloc          0x0000000000000b70        0x0
- .reloc         0x0000000000000b70        0x0 dll stuff
+.text           0x0000000000000db0        0x0
+ .text          0x0000000000000db0        0x0 ./bin/sm.obj
 
-sm$bss          0x0000000000000b70       0x54
-                0x0000000000000b70                bseg_start = .
+sm$bss          0x0000000000000db0       0x54
  ./bin/sm.obj(bseg)
- bseg           0x0000000000000b70       0x54 ./bin/sm.obj
-                0x0000000000000bc4                bseg_end = .
-                0x0000000000000bc4                bseg_len = (bseg_end - bseg_start)
+ bseg           0x0000000000000db0       0x54 ./bin/sm.obj
 
-sm$stack        0x0000000000000b70     0x1100
+sm$stack        0x0000000000000e10     0x1100
  ./bin/sm.obj(sseg$int)
- sseg$int       0x0000000000000b70      0x100 ./bin/sm.obj
-                0x0000000000000c70                sm$intTOS = .
+ sseg$int       0x0000000000000e10      0x100 ./bin/sm.obj
+                0x0000000000000f10                sm$intTOS = .
  ./bin/sm.obj(sseg$shl)
- sseg$shl       0x0000000000000c70     0x1000 ./bin/sm.obj
-                0x0000000000001c70                sm$shlTOS = .
+ sseg$shl       0x0000000000000f10     0x1000 ./bin/sm.obj
+                0x0000000000001f10                sm$shlTOS = .
 OUTPUT(./bin/sm.exe pei-x86-64)
 LOAD dll stuff
+
+.reloc          0x0000000000001f10        0x0
+ .reloc         0x0000000000001f10        0x0 dll stuff
